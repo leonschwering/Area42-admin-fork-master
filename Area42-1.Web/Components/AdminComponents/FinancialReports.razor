@@ -1,0 +1,120 @@
+@using Area42_1.Web.Models
+@inherits LocalizedComponentBase
+
+<div>
+    <h2>💰 @T("Financiële rapporten", "Financial Reports")</h2>
+
+    @if (Rank == AdminRank.SuperAdmin || Rank == AdminRank.Admin || Rank == AdminRank.SeniorManager)
+    {
+        <div style="margin-bottom: 2rem;">
+            <button class="btn btn-sm btn-primary">
+                📥 @T("CSV exporteren", "Export CSV")
+            </button>
+            <button class="btn btn-sm btn-outline-secondary">
+                📊 @T("PDF-rapport", "PDF Report")
+            </button>
+            <div style="display: inline-block; margin-left: 2rem; padding: 0.75rem 1rem; background: #f8f9fa; border-radius: 4px;">
+                <label>@T("Periode:", "Period:")</label>
+                <select style="margin-left: 0.5rem; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                    <option>@T("Afgelopen 30 dagen", "Last 30 days")</option>
+                    <option>@T("Afgelopen 90 dagen", "Last 90 days")</option>
+                    <option>@T("Dit jaar", "This year")</option>
+                    <option>@T("Aangepast bereik", "Custom range")</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Financial Summary Cards -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 2rem 0;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.5rem; border-radius: 8px;">
+                <div style="font-size: 0.9rem; opacity: 0.9;">@T("Totale omzet", "Total Revenue")</div>
+                <div style="font-size: 2rem; font-weight: bold;">€156,420</div>
+                <small>@T("Laatst 30 dagen", "Last 30 days")</small>
+            </div>
+
+            <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 1.5rem; border-radius: 8px;">
+                <div style="font-size: 0.9rem; opacity: 0.9;">@T("Totale terugbetalingen", "Total Refunds")</div>
+                <div style="font-size: 2rem; font-weight: bold;">€12,340</div>
+                <small>@T("42 geverifieerde terugbetalingen", "42 verified refunds")</small>
+            </div>
+
+            <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; padding: 1.5rem; border-radius: 8px;">
+                <div style="font-size: 0.9rem; opacity: 0.9;">@T("Gemiddelde boekingswaarde", "Avg. Booking Value")</div>
+                <div style="font-size: 2rem; font-weight: bold;">€485</div>
+                <small>@T("322 voltooide boekingen", "322 completed bookings")</small>
+            </div>
+
+            <div style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: white; padding: 1.5rem; border-radius: 8px;">
+                <div style="font-size: 0.9rem; opacity: 0.9;">@T("Nettowinst", "Net Profit")</div>
+                <div style="font-size: 2rem; font-weight: bold;">€98,540</div>
+                <small>@T("63% winstmarge", "63% profit margin")</small>
+            </div>
+        </div>
+
+        <!-- Dual Approval Financial Transactions -->
+        <div style="background: #fff3cd; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #ffc107; margin: 2rem 0;">
+            <h5 style="margin-top: 0;">🔐 @T("Financiële transacties boven drempel", "Financial Transactions Above Threshold")</h5>
+            <p style="margin-bottom: 1rem;">@T("Transacties boven €500 vereisen dual approval. Boven €2.000 vereist 2× admin bevestiging + 2FA.", "Transactions above €500 require dual approval. Above €2,000 requires 2× admin confirmation + 2FA.")</p>
+
+            <div style="background: white; border-radius: 4px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead style="background: #f8f9fa;">
+                        <tr>
+                            <th style="padding: 0.75rem; text-align: left;">@T("Bedrag", "Amount")</th>
+                            <th style="padding: 0.75rem; text-align: left;">@T("Type", "Type")</th>
+                            <th style="padding: 0.75rem; text-align: left;">@T("Aanvrager", "Requestor")</th>
+                            <th style="padding: 0.75rem; text-align: left;">@T("Status", "Status")</th>
+                            <th style="padding: 0.75rem; text-align: center;">@T("Acties", "Actions")</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="border-bottom: 1px solid #ddd;">
+                            <td style="padding: 0.75rem; font-weight: bold; color: #dc3545;">€2,500</td>
+                            <td style="padding: 0.75rem;">@T("Terugbetaling", "Refund")</td>
+                            <td style="padding: 0.75rem;">Charlie Brown</td>
+                            <td style="padding: 0.75rem;">⏳ @T("1/2 goedgekeurd", "1/2 approved")</td>
+                            <td style="padding: 0.75rem; text-align: center;">
+                                <button class="btn btn-xs btn-success">✓</button>
+                                <button class="btn btn-xs btn-danger">✕</button>
+                            </td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #ddd;">
+                            <td style="padding: 0.75rem; font-weight: bold; color: #dc3545;">€1,200</td>
+                            <td style="padding: 0.75rem;">@T("Korting verwerkt", "Discount Applied")</td>
+                            <td style="padding: 0.75rem;">Bob Smith</td>
+                            <td style="padding: 0.75rem;">✅ @T("Uitgevoerd", "Executed")</td>
+                            <td style="padding: 0.75rem; text-align: center;">-</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Financial Audit Log -->
+        <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px;">
+            <h5 style="margin-top: 0;">📋 @T("Financiële auditlogboek", "Financial Audit Log")</h5>
+            <p style="color: #666; margin-bottom: 1rem;">@T("Immutable log van alle financiële transacties, goedkeuringen en dubbele controles.", "Immutable log of all financial transactions, approvals, and dual verifications.")</p>
+            <a href="/admin/financial-audit-log" class="btn btn-sm btn-outline-primary">@T("Auditlogboek bekijken", "View Audit Log")</a>
+        </div>
+    }
+    else if (Rank == AdminRank.CustomerSupport)
+    {
+        <div style="background: #fff3cd; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #ffc107;">
+            <h5 style="margin-top: 0;">💰 @T("Beperkte financiële toestemmingen", "Limited Financial Permissions")</h5>
+            <p>@T("U kunt terugbetalingen tot €150 zelfstandig verwerken. Bedragen boven €150 vereisen goedkeuring van Rank 1.3+.", "You can process refunds up to €150 independently. Amounts above €150 require Rank 1.3+ approval.")</p>
+            <a href="/admin/my-financial-requests" class="btn btn-sm btn-outline-primary">@T("Mijn aanvragen", "My Requests")</a>
+        </div>
+    }
+    else
+    {
+        <div style="background: #e7d4f5; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #6c63ff;">
+            <strong>@T("Geen financiële toestemmingen", "No Financial Permissions")</strong>
+            <p>@T("U bent niet gemachtigd om financiële rapporten weer te geven. Alleen Rank 1.3+ en 2.3 hebben toegang.", "You are not authorized to view financial reports. Only Rank 1.3+ and 2.3 have access.")</p>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public AdminRank? Rank { get; set; }
+}

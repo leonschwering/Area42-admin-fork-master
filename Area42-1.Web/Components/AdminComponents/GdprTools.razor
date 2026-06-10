@@ -1,0 +1,115 @@
+@using Area42_1.Web.Models
+@inherits LocalizedComponentBase
+
+<div>
+    <h2>⚖️ @T("GDPR/AVG Tools", "GDPR/AVG Tools")</h2>
+
+    @if (Rank == AdminRank.SuperAdmin || Rank == AdminRank.Admin)
+    {
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin: 2rem 0;">
+            <!-- Erasure Requests -->
+            <div style="background: white; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #dc3545; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <h5 style="margin-top: 0;">🗑️ @T("Verwijderingsaanvragen", "Erasure Requests")</h5>
+                <p style="color: #666; margin-bottom: 1rem;">@T("Verwerk 'Right to be Forgotten' aanvragen van klanten. 30-daagse deadline.", "Process 'Right to be Forgotten' requests from clients. 30-day deadline.")</p>
+                <a href="/admin/erasure-requests" class="btn btn-sm btn-outline-danger">
+                    @T("Aanvragen beheren", "Manage Requests")
+                </a>
+            </div>
+
+            <!-- Data Export Audit -->
+            <div style="background: white; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #17a2b8; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <h5 style="margin-top: 0;">📊 @T("Gegevensexport Audits", "Data Export Audits")</h5>
+                <p style="color: #666; margin-bottom: 1rem;">@T("Bekijk logboeken van klanten die hun persoonlijke gegevens hebben geëxporteerd.", "View logs of customers who exported their personal data.")</p>
+                <a href="/admin/data-export-logs" class="btn btn-sm btn-outline-primary">
+                    @T("Export logboeken", "View Export Logs")
+                </a>
+            </div>
+
+            <!-- Consent Records -->
+            <div style="background: white; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #28a745; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <h5 style="margin-top: 0;">✔️ @T("Toestemmingsrecords", "Consent Records")</h5>
+                <p style="color: #666; margin-bottom: 1rem;">@T("Beheer en audit toestemmingsrecords voor marketing, cookies en analytics.", "Manage and audit consent records for marketing, cookies and analytics.")</p>
+                <a href="/admin/consent-records" class="btn btn-sm btn-outline-success">
+                    @T("Toestemmingsrecords", "Consent Records")
+                </a>
+            </div>
+
+            <!-- Data Retention -->
+            <div style="background: white; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #ffc107; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <h5 style="margin-top: 0;">📅 @T("Gegevensretentiebeheer", "Data Retention")</h5>
+                <p style="color: #666; margin-bottom: 1rem;">@T("Bekijk en beheer gegevensretentiebeleid en vervalschema's.", "View and manage data retention policies and expiry schedules.")</p>
+                <a href="/admin/retention-schedule" class="btn btn-sm btn-outline-info">
+                    @T("Retentieschema's", "Retention Schedules")
+                </a>
+            </div>
+
+            <!-- DPIA & Documentation -->
+            <div style="background: white; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #6c63ff; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <h5 style="margin-top: 0;">📋 @T("DPIA & Verwerkingsregister", "DPIA & Processing Register")</h5>
+                <p style="color: #666; margin-bottom: 1rem;">@T("Data Protection Impact Assessment en verwerkingsregister (Art. 30).", "DPIA and processing register (Art. 30).")</p>
+                <a href="/admin/dpia" class="btn btn-sm btn-outline-dark">
+                    @T("DPIA bekijken", "View DPIA")
+                </a>
+            </div>
+
+            <!-- Breach Response -->
+            <div style="background: white; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #dc3545; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <h5 style="margin-top: 0;">🚨 @T("Datalek Reactie", "Data Breach Response")</h5>
+                <p style="color: #666; margin-bottom: 1rem;">@T("72-uurs meldingsplicht aan AP (Autoriteit Persoonsgegevens).", "72-hour notification requirement to AP.")</p>
+                <a href="/admin/breach-response" class="btn btn-sm btn-danger">
+                    @T("Lek rapporteren", "Report Breach")
+                </a>
+            </div>
+        </div>
+
+        <!-- Compliance Status Summary -->
+        <div style="background: #e8f5e9; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #28a745; margin-top: 2rem;">
+            <h5 style="margin-top: 0;">✅ @T("Nalevingsstatus", "Compliance Status")</h5>
+            <table style="width: 100%; font-size: 0.9rem;">
+                <tr style="border-bottom: 1px solid #ddd;">
+                    <td style="padding: 0.5rem;">GDPR Art. 15 - @T("Toegangsrecht", "Right of Access")</td>
+                    <td style="text-align: right; padding: 0.5rem;">✅ @T("Geïmplementeerd", "Implemented")</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #ddd;">
+                    <td style="padding: 0.5rem;">GDPR Art. 17 - @T("Recht op vergetelheid", "Right to Erasure")</td>
+                    <td style="text-align: right; padding: 0.5rem;">✅ @T("Geïmplementeerd", "Implemented")</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #ddd;">
+                    <td style="padding: 0.5rem;">GDPR Art. 20 - @T("Dataportabiliteit", "Data Portability")</td>
+                    <td style="text-align: right; padding: 0.5rem;">✅ @T("Geïmplementeerd", "Implemented")</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #ddd;">
+                    <td style="padding: 0.5rem;">GDPR Art. 33 - @T("Lekmelding", "Breach Notification")</td>
+                    <td style="text-align: right; padding: 0.5rem;">✅ @T("Gereed", "Ready")</td>
+                </tr>
+                <tr>
+                    <td style="padding: 0.5rem;">GDPR Art. 35 - @T("DPIA", "DPIA")</td>
+                    <td style="text-align: right; padding: 0.5rem;">⏳ @T("In voorbereiding", "In Preparation")</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- AVG/GDPR Legal Reference -->
+        <div style="background: #f5f5f5; padding: 1.5rem; border-radius: 8px; margin-top: 2rem;">
+            <h5 style="margin-top: 0;">📚 @T("Wettelijke referenties", "Legal References")</h5>
+            <ul style="margin: 0; padding-left: 1.5rem; line-height: 1.8;">
+                <li>@T("AVG (Algemene Verordening Gegevensbescherming)", "GDPR (EU Regulation 2016/679)")</li>
+                <li>@T("UAVG (Uitvoeringswet AVG)", "UAVG (Dutch implementation law)")</li>
+                <li>@T("WOR Art. 27 - Medezeggenschap", "WOR Art. 27 - Works Council consent")</li>
+                <li>@T("Toezichthouder: Autoriteit Persoonsgegevens", "Supervisory Authority: Autoriteit Persoonsgegevens")</li>
+            </ul>
+        </div>
+    }
+    else
+    {
+        <div style="background: #e7d4f5; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #6c63ff;">
+            <strong>@T("Geen GDPR-rechten", "No GDPR Permissions")</strong>
+            <p>@T("U bent niet gemachtigd om GDPR-tools te gebruiken. Alleen Rank 1.2+ hebben toegang voor complianceoversicht.", "You are not authorized to access GDPR tools. Only Rank 1.2+ have access for compliance oversight.")</p>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public AdminRank? Rank { get; set; }
+}

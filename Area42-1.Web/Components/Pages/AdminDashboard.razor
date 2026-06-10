@@ -1,0 +1,220 @@
+@page "/admin"
+@page "/admin/dashboard"
+@using Area42_1.Web.Models
+@using Area42_1.Web.Services
+@using Area42_1.Web
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Routing
+@inherits LocalizedComponentBase
+@inject AdminAuthorizationService AuthService
+@inject KillSwitchService KillSwitchService
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>@T("Admin Dashboard - Area42", "Admin Dashboard - Area42")</PageTitle>
+
+<AuthorizeView>
+    <NotAuthorized>
+        <div style="padding: 2rem; text-align: center;">
+            <h2>@T("Toegang Geweigerd", "Access Denied")</h2>
+            <p>@T("U bent niet geautoriseerd om het admin paneel te openen. Zorg ervoor dat u ingelogd bent met een @area42.nl account.", "You are not authorized to access the admin panel. Ensure you are logged in with an @area42.nl account.")</p>
+            <a href="/" class="btn btn-primary">@T("Terug naar home", "Back to Home")</a>
+        </div>
+    </NotAuthorized>
+    <Authorized>
+        @if (!_isAuthorizedAdmin)
+        {
+            <div style="padding: 2rem; text-align: center;">
+                <h2>@T("Geen Adminrechten", "No Admin Rights")</h2>
+                <p>@T("Uw account is niet ingesteld als administrator. Neem contact op met support.", "Your account is not configured as an administrator. Please contact support.")</p>
+                <a href="/" class="btn btn-primary">@T("Terug naar home", "Back to Home")</a>
+            </div>
+        }
+        else
+        {
+            <div class="admin-wrapper">
+                <!-- Security Warning Banner -->
+                <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 1rem; margin-bottom: 2rem; border-radius: 4px;">
+                    <strong>⚠️ @T("Waarschuwing:", "Warning:")</strong> @T("Al uw acties in dit systeem worden gelogd en gemonitord.", "All your actions in this system are logged and monitored.")
+                </div>
+
+                <!-- Admin Header -->
+                <div style="display: flex; justify-content: space-between; align-items: center; background: white; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <div>
+                        <h1 style="margin: 0;">@T("Admin Dashboard", "Admin Dashboard")</h1>
+                        <small style="color: #666;">@T("Rang:", "Rank:") <span class="badge bg-info">@CurrentUserRank</span></small>
+                    </div>
+                    <button class="btn btn-sm btn-outline-danger" @onclick="Logout">@T("Uitloggen", "Logout")</button>
+                </div>
+
+                <!-- Navigation Tabs -->
+                <ul class="nav nav-tabs" style="background: white; padding: 1rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 2rem;">
+                    @if (visibleSections.Contains("overview"))
+                    {
+                        <li class="nav-item">
+                            <a class="nav-link @(activeTab == "overview" ? "active" : "")" 
+                               href="#" @onclick:preventDefault @onclick='() => SelectTab("overview")'>
+                                📊 @T("Overzicht", "Overview")
+                            </a>
+                        </li>
+                    }
+                    @if (visibleSections.Contains("security_dashboard"))
+                    {
+                        <li class="nav-item">
+                            <a class="nav-link @(activeTab == "security" ? "active" : "")" 
+                               href="#" @onclick:preventDefault @onclick='() => SelectTab("security")'>
+                                🔒 @T("Veiligheid", "Security")
+                            </a>
+                        </li>
+                    }
+                    @if (visibleSections.Contains("staff_management"))
+                    {
+                        <li class="nav-item">
+                            <a class="nav-link @(activeTab == "staff" ? "active" : "")" 
+                               href="#" @onclick:preventDefault @onclick='() => SelectTab("staff")'>
+                                👥 @T("Personeelsbeheer", "Staff Management")
+                            </a>
+                        </li>
+                    }
+                    @if (visibleSections.Contains("gdpr_tools"))
+                    {
+                        <li class="nav-item">
+                            <a class="nav-link @(activeTab == "gdpr" ? "active" : "")" 
+                               href="#" @onclick:preventDefault @onclick='() => SelectTab("gdpr")'>
+                                ⚖️ @T("GDPR", "GDPR")
+                            </a>
+                        </li>
+                    }
+                    @if (visibleSections.Contains("financial_reports"))
+                    {
+                        <li class="nav-item">
+                            <a class="nav-link @(activeTab == "financial" ? "active" : "")" 
+                               href="#" @onclick:preventDefault @onclick='() => SelectTab("financial")'>
+                                💰 @T("Financieel", "Financial")
+                            </a>
+                        </li>
+                    }
+                </ul>
+
+                <!-- Content Area -->
+                <div style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    @if (activeTab == "overview" && visibleSections.Contains("overview"))
+                    {
+                        <DashboardOverview Sections="visibleSections" />
+                    }
+
+                    @if (activeTab == "security" && visibleSections.Contains("security_dashboard"))
+                    {
+                        <SecurityDashboard Rank="CurrentUserRank" />
+                    }
+
+                    @if (activeTab == "staff" && visibleSections.Contains("staff_management"))
+                    {
+                        <StaffManagement Rank="CurrentUserRank" />
+                    }
+
+                    @if (activeTab == "gdpr" && visibleSections.Contains("gdpr_tools"))
+                    {
+                        <GdprTools Rank="CurrentUserRank" />
+                    }
+
+                    @if (activeTab == "financial" && visibleSections.Contains("financial_reports"))
+                    {
+                        <FinancialReports Rank="CurrentUserRank" />
+                    }
+                </div>
+            </div>
+        }
+    </Authorized>
+</AuthorizeView>
+
+<style>
+.admin-wrapper {
+    padding: 2rem;
+    background: #f8f9fa;
+    min-height: 100vh;
+}
+
+.admin-nav ul {
+    list-style: none;
+}
+
+.admin-nav li {
+    margin: 0;
+}
+
+.nav-link {
+    display: block;
+    padding: 0.75rem 1.5rem;
+    color: var(--text-dark);
+    text-decoration: none;
+    transition: all 0.2s ease;
+    border-left: 4px solid transparent;
+}
+
+.nav-link:hover {
+    background-color: rgba(0, 198, 163, 0.1);
+    border-left-color: #00c0a3;
+}
+
+.nav-link.active {
+    background-color: rgba(0, 198, 163, 0.2);
+    border-left-color: #00c0a3;
+    color: #00c0a3;
+}
+</style>
+
+@code {
+    private AdminRank? CurrentUserRank = AdminRank.SuperAdmin;
+    private string activeTab = "overview";
+    private string[] visibleSections = Array.Empty<string>();
+    private bool _isAuthorizedAdmin = false;
+
+    [Inject] private CustomAuthStateProvider? AuthStateProvider { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CheckAdminAuthorization();
+        visibleSections = AuthService.GetVisibleDashboardSections(CurrentUserRank);
+        activeTab = visibleSections.FirstOrDefault() ?? "overview";
+    }
+
+    private async Task CheckAdminAuthorization()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState?.User;
+
+        if (user?.Identity?.IsAuthenticated == true)
+        {
+            // Check for admin claim
+            var isAdmin = user.Claims.Any(c => (c.Type == "userType" && c.Value == "Admin") || 
+                                                (c.Type == "isAdmin" && c.Value == "true"));
+
+            if (isAdmin)
+            {
+                _isAuthorizedAdmin = true;
+
+                // Parse rank from claims
+                var rankClaim = user.Claims.FirstOrDefault(c => c.Type == "rank")?.Value;
+                if (rankClaim != null && Enum.TryParse<AdminRank>(rankClaim, out var rank))
+                {
+                    CurrentUserRank = rank;
+                }
+            }
+        }
+    }
+
+    private void SelectTab(string tab)
+    {
+        activeTab = tab;
+    }
+
+    private async Task Logout()
+    {
+        if (AuthStateProvider != null)
+        {
+            await AuthStateProvider.LogoutAsync();
+        }
+        Navigation.NavigateTo("/");
+    }
+}

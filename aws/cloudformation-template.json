@@ -1,0 +1,353 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Area42 Accommodation Reservation System - AWS ECS Deployment",
+  "Parameters": {
+    "Environment": {
+      "Type": "String",
+      "Default": "production",
+      "AllowedValues": ["development", "staging", "production"],
+      "Description": "Environment name"
+    },
+    "DockerImage": {
+      "Type": "String",
+      "Description": "Docker image URI for the application"
+    }
+  },
+  "Resources": {
+    "Area42VPC": {
+      "Type": "AWS::EC2::VPC",
+      "Properties": {
+        "CidrBlock": "10.0.0.0/16",
+        "EnableDnsHostnames": true,
+        "EnableDnsSupport": true,
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "Area42-VPC"
+          }
+        ]
+      }
+    },
+    "PublicSubnet1": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": {
+          "Ref": "Area42VPC"
+        },
+        "CidrBlock": "10.0.1.0/24",
+        "AvailabilityZone": {
+          "Fn::Select": [0, {"Fn::GetAZs": ""}]
+        },
+        "MapPublicIpOnLaunch": true
+      }
+    },
+    "PublicSubnet2": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": {
+          "Ref": "Area42VPC"
+        },
+        "CidrBlock": "10.0.2.0/24",
+        "AvailabilityZone": {
+          "Fn::Select": [1, {"Fn::GetAZs": ""}]
+        },
+        "MapPublicIpOnLaunch": true
+      }
+    },
+    "PrivateSubnet1": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": {
+          "Ref": "Area42VPC"
+        },
+        "CidrBlock": "10.0.10.0/24",
+        "AvailabilityZone": {
+          "Fn::Select": [0, {"Fn::GetAZs": ""}]
+        }
+      }
+    },
+    "PrivateSubnet2": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": {
+          "Ref": "Area42VPC"
+        },
+        "CidrBlock": "10.0.11.0/24",
+        "AvailabilityZone": {
+          "Fn::Select": [1, {"Fn::GetAZs": ""}]
+        }
+      }
+    },
+    "InternetGateway": {
+      "Type": "AWS::EC2::InternetGateway"
+    },
+    "AttachGateway": {
+      "Type": "AWS::EC2::VPCGatewayAttachment",
+      "Properties": {
+        "VpcId": {
+          "Ref": "Area42VPC"
+        },
+        "InternetGatewayId": {
+          "Ref": "InternetGateway"
+        }
+      }
+    },
+    "PublicRouteTable": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "VpcId": {
+          "Ref": "Area42VPC"
+        }
+      }
+    },
+    "PublicRoute": {
+      "Type": "AWS::EC2::Route",
+      "DependsOn": "AttachGateway",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "PublicRouteTable"
+        },
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "GatewayId": {
+          "Ref": "InternetGateway"
+        }
+      }
+    },
+    "SubnetRouteTableAssociation1": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "PublicSubnet1"
+        },
+        "RouteTableId": {
+          "Ref": "PublicRouteTable"
+        }
+      }
+    },
+    "SubnetRouteTableAssociation2": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "PublicSubnet2"
+        },
+        "RouteTableId": {
+          "Ref": "PublicRouteTable"
+        }
+      }
+    },
+    "Area42SecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Security group for Area42 ECS tasks",
+        "VpcId": {
+          "Ref": "Area42VPC"
+        },
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": 80,
+            "ToPort": 80,
+            "CidrIp": "0.0.0.0/0"
+          },
+          {
+            "IpProtocol": "tcp",
+            "FromPort": 443,
+            "ToPort": 443,
+            "CidrIp": "0.0.0.0/0"
+          }
+        ]
+      }
+    },
+    "RDSSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Security group for RDS SQL Server",
+        "VpcId": {
+          "Ref": "Area42VPC"
+        },
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": 1433,
+            "ToPort": 1433,
+            "SourceSecurityGroupId": {
+              "Ref": "Area42SecurityGroup"
+            }
+          }
+        ]
+      }
+    },
+    "Area42RDSInstance": {
+      "Type": "AWS::RDS::DBInstance",
+      "Properties": {
+        "Engine": "sqlserver-ex",
+        "DBInstanceClass": "db.t3.small",
+        "MasterUsername": "admin",
+        "MasterUserPassword": "YourSecurePassword123!",
+        "DBName": "Area42",
+        "AllocatedStorage": 20,
+        "StorageType": "gp2",
+        "DBSubnetGroupName": {
+          "Ref": "DBSubnetGroup"
+        },
+        "VPCSecurityGroups": [
+          {
+            "Ref": "RDSSecurityGroup"
+          }
+        ],
+        "BackupRetentionPeriod": 7,
+        "PreferredBackupWindow": "02:00-03:00",
+        "PreferredMaintenanceWindow": "sun:03:00-sun:04:00",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "Area42-Database"
+          }
+        ]
+      }
+    },
+    "DBSubnetGroup": {
+      "Type": "AWS::RDS::DBSubnetGroup",
+      "Properties": {
+        "DBSubnetGroupDescription": "Subnet group for RDS",
+        "SubnetIds": [
+          {
+            "Ref": "PrivateSubnet1"
+          },
+          {
+            "Ref": "PrivateSubnet2"
+          }
+        ]
+      }
+    },
+    "Area42ECSCluster": {
+      "Type": "AWS::ECS::Cluster",
+      "Properties": {
+        "ClusterName": "Area42-Cluster",
+        "ClusterSettings": [
+          {
+            "Name": "containerInsights",
+            "Value": "enabled"
+          }
+        ]
+      }
+    },
+    "Area42ApiTaskRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "ecs-tasks.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "ManagedPolicyArns": [
+          "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
+        ]
+      }
+    },
+    "Area42ApiTaskExecutionRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "ecs-tasks.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "ManagedPolicyArns": [
+          "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy",
+          "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
+        ]
+      }
+    },
+    "Area42ApplicationLoadBalancer": {
+      "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "Properties": {
+        "Name": "Area42-ALB",
+        "Subnets": [
+          {
+            "Ref": "PublicSubnet1"
+          },
+          {
+            "Ref": "PublicSubnet2"
+          }
+        ],
+        "SecurityGroups": [
+          {
+            "Ref": "Area42SecurityGroup"
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "Area42-ALB"
+          }
+        ]
+      }
+    },
+    "Area42TargetGroup": {
+      "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "Properties": {
+        "Name": "Area42-TG",
+        "Port": 80,
+        "Protocol": "HTTP",
+        "VpcId": {
+          "Ref": "Area42VPC"
+        },
+        "TargetType": "ip",
+        "HealthCheckEnabled": true,
+        "HealthCheckPath": "/",
+        "HealthCheckProtocol": "HTTP",
+        "HealthCheckIntervalSeconds": 30,
+        "HealthCheckTimeoutSeconds": 5,
+        "HealthyThresholdCount": 2,
+        "UnhealthyThresholdCount": 3
+      }
+    },
+    "Area42ALBListener": {
+      "Type": "AWS::ElasticLoadBalancingV2::Listener",
+      "Properties": {
+        "LoadBalancerArn": {
+          "Ref": "Area42ApplicationLoadBalancer"
+        },
+        "Port": 80,
+        "Protocol": "HTTP",
+        "DefaultActions": [
+          {
+            "Type": "forward",
+            "TargetGroupArn": {
+              "Ref": "Area42TargetGroup"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "Outputs": {
+    "LoadBalancerDNS": {
+      "Description": "DNS name of the load balancer",
+      "Value": {
+        "Fn::GetAtt": ["Area42ApplicationLoadBalancer", "DNSName"]
+      }
+    },
+    "ClusterName": {
+      "Description": "ECS Cluster Name",
+      "Value": {
+        "Ref": "Area42ECSCluster"
+      }
+    }
+  }
+}

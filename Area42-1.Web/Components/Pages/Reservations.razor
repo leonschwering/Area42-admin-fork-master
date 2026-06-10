@@ -1,0 +1,47 @@
+@page "/reservations"
+@layout MainLayout
+@using Area42_1.Web.Components.Layout
+@inherits LocalizedComponentBase
+
+<div class="container mt-4">
+    <h1>@T("Mijn reserveringen", "My Reservations")</h1>
+
+    <div class="mb-4">
+        <div class="grid grid-2">
+            <div class="card">
+                <div class="card-header">
+                    <h3>@T("Actieve reservering", "Active Reservation")</h3>
+                </div>
+                <div>
+                    <h4>@T("Luxe chalet", "Luxury Chalet")</h4>
+                    <p><strong>@T("Inchecken:", "Check-in:")</strong> 15 maart 2024</p>
+                    <p><strong>@T("Uitchecken:", "Check-out:")</strong> 22 maart 2024</p>
+                    <p><strong>@T("Totale prijs:", "Total Price:")</strong> €1.400</p>
+                    <p><strong>@T("Status:", "Status:")</strong> <span style="color: #00c0a3; font-weight: 600;">@T("Bevestigd", "Confirmed")</span></p>
+                    <div class="mt-3">
+                        <button class="btn btn-primary">@T("Bekijk details", "View Details")</button>
+                        <button class="btn btn-danger" style="margin-left: 0.5rem;">@T("Annuleer reservering", "Cancel Reservation")</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3>@T("Vorige reservering", "Past Reservation")</h3>
+                </div>
+                <div>
+                    <h4>@T("Gezellige bungalow", "Cozy Bungalow")</h4>
+                    <p><strong>@T("Inchecken:", "Check-in:")</strong> 5 januari 2024</p>
+                    <p><strong>@T("Uitchecken:", "Check-out:")</strong> 10 januari 2024</p>
+                    <p><strong>@T("Totale prijs:", "Total Price:")</strong> €750</p>
+                    <p><strong>@T("Status:", "Status:")</strong> <span style="color: #999; font-weight: 600;">@T("Afgerond", "Completed")</span></p>
+                    <button class="btn btn-primary" style="margin-top: 1rem;">@T("Bekijk details", "View Details")</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <a href="/accommodations" class="btn btn-primary">@T("Boek een andere accommodatie", "Book Another Accommodation")</a>
+    </div>
+</div>

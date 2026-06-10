@@ -1,0 +1,341 @@
+@page "/register"
+@inherits LocalizedComponentBase
+@inject DutchAddressRepository AddressRepository
+@inject AccountService AccountService
+@inject AccountValidationService ValidationService
+@using Area42_1.Web.Services
+@using Area42_1.Web.Models
+
+<PageTitle>@T("Registreren - Area42", "Register - Area42")</PageTitle>
+
+<div style="max-width: 700px; margin: 3rem auto; padding: 0 1rem;">
+    <div style="border: 1px solid #ddd; border-radius: 8px; padding: 2rem; background: white;">
+        <h2 style="text-align: center; margin-bottom: 0.5rem;">@T("Maak je account", "Create Your Account")</h2>
+        <p style="text-align: center; color: #666; margin-bottom: 2rem;">@T("Word lid van Area42 en boek geweldige accommodaties", "Join Area42 and start booking amazing accommodations")</p>
+
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <div style="background: #e8f5e9; color: #1b5e20; padding: 1rem; border-radius: 4px; margin-bottom: 1.5rem;">
+                @successMessage
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div style="background: #ffebee; color: #c62828; padding: 1rem; border-radius: 4px; margin-bottom: 1.5rem;">
+                @errorMessage
+            </div>
+        }
+
+        <form @onsubmit="HandleRegister">
+            <!-- Personal Info -->
+            <fieldset style="border: none; padding: 0; margin-bottom: 2rem;">
+                <legend style="font-weight: 600; margin-bottom: 1rem;">@T("Persoonlijke gegevens", "Personal Information")</legend>
+
+                <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">@T("Voornaam *", "First Name *")</label>
+                        <input type="text" @bind="registration.FirstName" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;" placeholder="@T("Jan", "John")" required />
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">@T("Tussenvoegsel", "Middle Name")</label>
+                        <input type="text" @bind="registration.Tussenvoegsel" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;" placeholder="@T("van", "van")" />
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">@T("Achternaam *", "Last Name *")</label>
+                        <input type="text" @bind="registration.LastName" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;" placeholder="@T("Jansen", "Doe")" required />
+                    </div>
+                </div>
+
+                <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 0.75rem; margin-bottom: 1.5rem; border-radius: 4px;">
+                    <p style="margin: 0; font-size: 0.9rem;">
+                        <strong>@T("⚠️ Belangrijke herinnering:", "⚠️ Important Reminder:")</strong><br/>
+                        @T("De naam die je hier invoert moet exact overeenkomen met je ID voor check-in.", "The name you enter here must match your ID exactly for check-in.")
+                    </p>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">@T("Geslacht *", "Gender *")</label>
+                        <select @bind="registration.Gender" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;" required>
+                            <option value="">@T("Selecteer...", "Select...")</option>
+                            <option value="M">@T("Man", "Male")</option>
+                            <option value="F">@T("Vrouw", "Female")</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">@T("Geboortedatum *", "Date of Birth *")</label>
+                        <input type="date" @bind="registration.DateOfBirth" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;" required />
+                    </div>
+                </div>
+            </fieldset>
+
+            <!-- Address Info -->
+            <fieldset style="border: none; padding: 0; margin-bottom: 2rem;">
+                <legend style="font-weight: 600; margin-bottom: 1rem;">@T("Adresgegevens", "Address Information")</legend>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">@T("Land *", "Country *")</label>
+                    <select @bind="selectedCountry" @bind:event="onchange" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;" required>
+                        <option value="">@T("Selecteer land...", "Select country...")</option>
+                        <option value="Netherlands">@T("Nederland", "Netherlands")</option>
+                        <option value="Belgium">@T("België", "Belgium")</option>
+                        <option value="Germany">@T("Duitsland", "Germany")</option>
+                        <option value="France">@T("Frankrijk", "France")</option>
+                        <option value="UK">@T("Verenigd Koninkrijk", "United Kingdom")</option>
+                        <option value="Other">@T("Ander land", "Other Country")</option>
+                    </select>
+                </div>
+
+                @if (selectedCountry == "Netherlands")
+                {
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                        <div>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">@T("Postcode *", "Postal Code *")</label>
+                            <input type="text" @bind:get="registration.PostalCode" @bind:set="SetPostalCode" @bind:event="onchange" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;" placeholder="@T("1234 AB", "1234 AB")" required />
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">@T("Huisnummer *", "House Number *")</label>
+                            <input type="text" @bind:get="registration.HouseNumber" @bind:set="SetHouseNumber" @bind:event="onchange" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;" placeholder="@T("123", "123")" required />
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">@T("Huisletter", "House Letter")</label>
+                            <input type="text" @bind="registration.HouseLetter" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;" placeholder="@T("A", "A")" maxlength="1" />
+                        </div>
+                    </div>
+
+                    @if (isLookingUpAddress)
+                    {
+                        <div style="background: #e3f2fd; padding: 1rem; border-radius: 4px; margin-bottom: 1.5rem;">
+                            @T("Adres wordt opgehaald...", "Looking up address...")
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                        <div>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">@T("Straat *", "Street *")</label>
+                            <input type="text" @bind="registration.Street" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;" placeholder="@T("Straatname", "Street Name")" required />
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">@T("Huisnummer *", "House Number *")</label>
+                            <input type="text" @bind="registration.HouseNumber" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;" placeholder="@T("123", "123")" required />
+                        </div>
+                    </div>
+                }
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">@T("Postcode/ZIP *", "Postal Code/ZIP *")</label>
+                        <input type="text" @bind="registration.PostalCode" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;" placeholder="@T("1234 AB", "1234 AB")" required />
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">@T("Plaats *", "City *")</label>
+                        <input type="text" @bind="registration.City" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;" placeholder="@T("Amsterdam", "Amsterdam")" required />
+                    </div>
+                </div>
+            </fieldset>
+
+            <!-- Contact Info -->
+            <fieldset style="border: none; padding: 0; margin-bottom: 2rem;">
+                <legend style="font-weight: 600; margin-bottom: 1rem;">@T("Contactgegevens", "Contact Information")</legend>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">@T("E-mailadres *", "Email Address *")</label>
+                    <input type="email" @bind="registration.Email" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;" placeholder="@T("jouw@email.com", "your@email.com")" required />
+                </div>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">@T("Telefoonnummer *", "Phone Number *")</label>
+                    <input type="tel" @bind="registration.PhoneNumber" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;" placeholder="@T("+31 6 12345678", "+31 6 12345678")" required />
+                </div>
+            </fieldset>
+
+            <!-- Password Info -->
+            <fieldset style="border: none; padding: 0; margin-bottom: 2rem;">
+                <legend style="font-weight: 600; margin-bottom: 1rem;">@T("Wachtwoord", "Password")</legend>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">@T("Wachtwoord *", "Password *")</label>
+                    <input type="password" @bind="registration.Password" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;" placeholder="••••••••" required />
+                    <small style="color: #999;">@T("Minimaal 8 tekens", "At least 8 characters")</small>
+                </div>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">@T("Bevestig wachtwoord *", "Confirm Password *")</label>
+                    <input type="password" @bind="registration.ConfirmPassword" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;" placeholder="••••••••" required />
+                </div>
+            </fieldset>
+
+            <div style="margin-bottom: 1.5rem;">
+                <label style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="checkbox" @bind="agreeToTerms" />
+                    <span>@T("Ik ga akkoord met de algemene voorwaarden *", "I agree to the Terms and Conditions *")</span>
+                </label>
+            </div>
+
+            <button type="submit" style="width: 100%; background: #00c0a3; color: white; padding: 0.75rem; border: none; border-radius: 4px; font-weight: 600; cursor: pointer;" disabled="@isSubmitting">
+                @if (isSubmitting)
+                {
+                    @T("Bezig met aanmaken...", "Creating Account...")
+                }
+                else
+                {
+                    @T("Account aanmaken", "Create Account")
+                }
+            </button>
+        </form>
+
+        <p style="text-align: center; margin-top: 1.5rem;">
+            @T("Heb je al een account?", "Already have an account?") <a href="/login" style="color: #003580; text-decoration: none;">@T("Log hier in", "Login here")</a>
+        </p>
+    </div>
+</div>
+
+@code {
+    private Models.UserRegistration registration = new();
+    private bool agreeToTerms = false;
+    private bool isSubmitting = false;
+    private bool isLookingUpAddress = false;
+    private string errorMessage = string.Empty;
+    private string successMessage = string.Empty;
+    private string selectedCountry = string.Empty;
+
+    private void SetPostalCode(string value)
+    {
+        registration.PostalCode = value;
+        _ = HandlePostalCodeChange();
+    }
+
+    private void SetHouseNumber(string value)
+    {
+        registration.HouseNumber = value;
+        _ = HandlePostalCodeChange();
+    }
+
+    private async Task HandlePostalCodeChange()
+    {
+        if (selectedCountry != "Netherlands" || string.IsNullOrWhiteSpace(registration.PostalCode) || string.IsNullOrWhiteSpace(registration.HouseNumber))
+        {
+            return;
+        }
+
+        isLookingUpAddress = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            var address = await AddressRepository.LookupByPostalCodeAndHouseNumberAsync(registration.PostalCode, registration.HouseNumber);
+            if (address != null)
+            {
+                registration.Street = address.Street;
+                registration.City = address.City;
+                registration.Country = "Netherlands";
+            }
+            else
+            {
+                errorMessage = T("Postcode en huisnummer niet gevonden. Voer het adres handmatig in.", "Postal code and house number not found. Please enter the address manually.");
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = T("Kon adres niet opzoeken. Voer het handmatig in.", "Could not lookup address. Please enter it manually.");
+        }
+        finally
+        {
+            isLookingUpAddress = false;
+        }
+    }
+
+    private async Task HandleRegister()
+    {
+        errorMessage = string.Empty;
+        successMessage = string.Empty;
+
+        // Validation
+        if (string.IsNullOrWhiteSpace(registration.FirstName) || string.IsNullOrWhiteSpace(registration.LastName))
+        {
+            errorMessage = T("Voornaam en achternaam zijn verplicht.", "First name and last name are required.");
+            return;
+        }
+
+        // Validate name format (Aa-Zz only)
+        var nameValidation = ValidationService.ValidateName(registration.FirstName, registration.LastName, registration.Tussenvoegsel);
+        if (!nameValidation.IsValid)
+        {
+            errorMessage = nameValidation.Message;
+            return;
+        }
+
+        if (registration.DateOfBirth == default)
+        {
+            errorMessage = T("Geboortedatum is verplicht.", "Date of birth is required.");
+            return;
+        }
+
+        // Validate age (must be >= 18)
+        var ageValidation = ValidationService.ValidateAge(registration.DateOfBirth);
+        if (!ageValidation.IsValid)
+        {
+            errorMessage = ageValidation.Message;
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(selectedCountry))
+        {
+            errorMessage = T("Selecteer alstublieft een land.", "Please select a country.");
+            return;
+        }
+
+        if (registration.Password != registration.ConfirmPassword)
+        {
+            errorMessage = T("Wachtwoorden komen niet overeen.", "Passwords do not match.");
+            return;
+        }
+
+        if (registration.Password.Length < 8)
+        {
+            errorMessage = T("Wachtwoord moet minstens 8 tekens lang zijn.", "Password must be at least 8 characters.");
+            return;
+        }
+
+        if (!agreeToTerms)
+        {
+            errorMessage = T("Je moet akkoord gaan met de algemene voorwaarden.", "You must agree to the terms and conditions.");
+            return;
+        }
+
+        isSubmitting = true;
+
+        try
+        {
+            registration.Country = selectedCountry;
+
+            // Register account with encryption and persistence
+            var (success, message, account) = await AccountService.RegisterAsync(registration);
+
+            if (success && account != null)
+            {
+                successMessage = T("Account succesvol aangemaakt! Je kunt je nu inloggen.", "Account created successfully! You can now login.");
+
+                // Reset form
+                registration = new();
+                selectedCountry = string.Empty;
+                agreeToTerms = false;
+            }
+            else
+            {
+                errorMessage = message;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = T("Er is een fout opgetreden bij het aanmaken van je account.", "An error occurred while creating your account.");
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}

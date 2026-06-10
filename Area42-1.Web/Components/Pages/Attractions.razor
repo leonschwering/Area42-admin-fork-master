@@ -1,0 +1,225 @@
+@page "/attractions"
+@inherits LocalizedComponentBase
+
+<PageTitle>@T("Bezienswaardigheden in Eindhoven - Area42", "Attractions in Eindhoven - Area42")</PageTitle>
+
+<div style="max-width: 1200px; margin: 0 auto; padding: 2rem 1rem;">
+    <!-- Header -->
+    <div style="text-align: center; margin-bottom: 3rem;">
+        <h1 style="margin-bottom: 0.5rem;">🎭 @T("Bezienswaardigheden in Eindhoven", "Attractions in Eindhoven")</h1>
+        <p style="font-size: 1.1rem; color: #666;">@T("Ontdek de beste activiteiten en musea in Eindhoven", "Discover the best activities and museums in Eindhoven")</p>
+    </div>
+
+    <!-- Main Attractions Grid -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 2rem; margin-bottom: 3rem;">
+
+        <!-- Van Gogh Museum -->
+        <div style="border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); transition: transform 0.3s;">
+            <img src="https://images.unsplash.com/photo-1578262996442-48f60103fc96?w=400&h=250&fit=crop" alt="Van Gogh Museum" style="width: 100%; height: 200px; object-fit: cover;" />
+            <div style="padding: 1.5rem;">
+                <h3 style="margin-top: 0; color: #003580;">🎨 @T("Van Gogh Museum", "Van Gogh Museum")</h3>
+                <p>@T("Ontdek het werk van Vincent van Gogh. Een must-see museum met wereldberoemde schilderijen.", "Discover the works of Vincent van Gogh. A must-see museum with world-famous paintings.")</p>
+
+                <!-- Contact Info -->
+                <div style="background: #f5f5f5; padding: 1rem; border-radius: 4px; margin: 1rem 0; font-size: 0.9rem;">
+                    <strong>📍 @T("Locatie:", "Location:")</strong><br />
+                    Boomstraat 11, 5611 HA Eindhoven
+                    <br /><br />
+                    <strong>📞 @T("Telefoon:", "Phone:")</strong> <a href="tel:+31402238489" style="color: #003580; text-decoration: none;">+31 (0)40 223 8489</a>
+                    <br /><br />
+                    <strong>✉️ @T("Email:", "Email:")</strong> <a href="mailto:info@vgh-museum.nl" style="color: #003580; text-decoration: none;">info@vgh-museum.nl</a>
+                    <br /><br />
+                    <strong>💬 @T("WhatsApp:", "WhatsApp:")</strong> <a href="https://wa.me/31402238489" target="_blank" rel="noopener noreferrer" style="color: #00c0a3; text-decoration: none;">+31 40 223 8489</a>
+                </div>
+
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <a href="https://www.vangoghmuseum-eindhoven.nl" target="_blank" rel="noopener noreferrer" 
+                       style="display: inline-block; background: #003580; color: white; padding: 0.5rem 1rem; border-radius: 4px; text-decoration: none; font-size: 0.9rem;">
+                        🌐 @T("Website bezoeken", "Visit Website")
+                    </a>
+                    <a href="https://www.google.com/maps/search/Van+Gogh+Museum+Eindhoven" target="_blank" rel="noopener noreferrer"
+                       style="display: inline-block; background: #00c0a3; color: white; padding: 0.5rem 1rem; border-radius: 4px; text-decoration: none; font-size: 0.9rem;">
+                        📍 @T("Routeplan", "Directions")
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Philips Museum -->
+        <div style="border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            <img src="https://images.unsplash.com/photo-1594736797933-d0501ba2fe65?w=400&h=250&fit=crop" alt="Philips Museum" style="width: 100%; height: 200px; object-fit: cover;" />
+            <div style="padding: 1.5rem;">
+                <h3 style="margin-top: 0; color: #003580;">⚡ @T("Philips Museum", "Philips Museum")</h3>
+                <p>@T("Leer over 130 jaar innovatie en technologie van Philips in Eindhoven.", "Learn about 130 years of Philips innovation and technology in Eindhoven.")</p>
+
+                <!-- Contact Info -->
+                <div style="background: #f5f5f5; padding: 1rem; border-radius: 4px; margin: 1rem 0; font-size: 0.9rem;">
+                    <strong>📍 @T("Locatie:", "Location:")</strong><br />
+                    Emmasingel 31, 5611 AZ Eindhoven
+                    <br /><br />
+                    <strong>📞 @T("Telefoon:", "Phone:")</strong> <a href="tel:+31402567100" style="color: #003580; text-decoration: none;">+31 (0)40 256 7100</a>
+                    <br /><br />
+                    <strong>✉️ @T("Email:", "Email:")</strong> <a href="mailto:info@philips-museum.nl" style="color: #003580; text-decoration: none;">info@philips-museum.nl</a>
+                    <br /><br />
+                    <strong>💬 @T("WhatsApp:", "WhatsApp:")</strong> <a href="https://wa.me/31402567100" target="_blank" rel="noopener noreferrer" style="color: #00c0a3; text-decoration: none;">+31 40 256 7100</a>
+                </div>
+
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <a href="https://www.philips-museum.nl" target="_blank" rel="noopener noreferrer"
+                       style="display: inline-block; background: #003580; color: white; padding: 0.5rem 1rem; border-radius: 4px; text-decoration: none; font-size: 0.9rem;">
+                        🌐 @T("Website bezoeken", "Visit Website")
+                    </a>
+                    <a href="https://www.google.com/maps/search/Philips+Museum+Eindhoven" target="_blank" rel="noopener noreferrer"
+                       style="display: inline-block; background: #00c0a3; color: white; padding: 0.5rem 1rem; border-radius: 4px; text-decoration: none; font-size: 0.9rem;">
+                        📍 @T("Routeplan", "Directions")
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- DAF Museum -->
+        <div style="border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            <img src="https://images.unsplash.com/photo-1609270455194-c95c60caf4c2?w=400&h=250&fit=crop" alt="DAF Museum" style="width: 100%; height: 200px; object-fit: cover;" />
+            <div style="padding: 1.5rem;">
+                <h3 style="margin-top: 0; color: #003580;">🚚 @T("DAF Museum", "DAF Museum")</h3>
+                <p>@T("Ontdek de geschiedenis van DAF vrachtwagens en voertuigen. Perfecte plek voor autoliefhebbers.", "Discover the history of DAF trucks and vehicles. Perfect place for car enthusiasts.")</p>
+
+                <!-- Contact Info -->
+                <div style="background: #f5f5f5; padding: 1rem; border-radius: 4px; margin: 1rem 0; font-size: 0.9rem;">
+                    <strong>📍 @T("Locatie:", "Location:")</strong><br />
+                    Tongelreplein 27, 5644 AR Eindhoven
+                    <br /><br />
+                    <strong>📞 @T("Telefoon:", "Phone:")</strong> <a href="tel:+31402857700" style="color: #003580; text-decoration: none;">+31 (0)40 285 7700</a>
+                    <br /><br />
+                    <strong>✉️ @T("Email:", "Email:")</strong> <a href="mailto:info@daf-museum.nl" style="color: #003580; text-decoration: none;">info@daf-museum.nl</a>
+                    <br /><br />
+                    <strong>💬 @T("WhatsApp:", "WhatsApp:")</strong> <a href="https://wa.me/31402857700" target="_blank" rel="noopener noreferrer" style="color: #00c0a3; text-decoration: none;">+31 40 285 7700</a>
+                </div>
+
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <a href="https://www.daf-museum.nl" target="_blank" rel="noopener noreferrer"
+                       style="display: inline-block; background: #003580; color: white; padding: 0.5rem 1rem; border-radius: 4px; text-decoration: none; font-size: 0.9rem;">
+                        🌐 @T("Website bezoeken", "Visit Website")
+                    </a>
+                    <a href="https://www.google.com/maps/search/DAF+Museum+Eindhoven" target="_blank" rel="noopener noreferrer"
+                       style="display: inline-block; background: #00c0a3; color: white; padding: 0.5rem 1rem; border-radius: 4px; text-decoration: none; font-size: 0.9rem;">
+                        📍 @T("Routeplan", "Directions")
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- PSV Stadium -->
+        <div style="border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            <img src="https://images.unsplash.com/photo-1519167758481-dc8997217398?w=400&h=250&fit=crop" alt="PSV Stadium" style="width: 100%; height: 200px; object-fit: cover;" />
+            <div style="padding: 1.5rem;">
+                <h3 style="margin-top: 0; color: #003580;">⚽ @T("Philips Stadion (PSV)", "Philips Stadium (PSV)")</h3>
+                <p>@T("Bezoek het thuis van PSV Eindhoven, een van de grootste voetbalclubs van Nederland. Stadionrondleiding beschikbaar.", "Visit the home of PSV Eindhoven, one of the Netherlands' greatest football clubs. Stadium tours available.")</p>
+
+                <!-- Contact Info -->
+                <div style="background: #f5f5f5; padding: 1rem; border-radius: 4px; margin: 1rem 0; font-size: 0.9rem;">
+                    <strong>📍 @T("Locatie:", "Location:")</strong><br />
+                    Frederiklaan 10a, 5616 GC Eindhoven
+                    <br /><br />
+                    <strong>📞 @T("Telefoon:", "Phone:")</strong> <a href="tel:+31402425000" style="color: #003580; text-decoration: none;">+31 (0)40 242 5000</a>
+                    <br /><br />
+                    <strong>✉️ @T("Email:", "Email:")</strong> <a href="mailto:info@psv.nl" style="color: #003580; text-decoration: none;">info@psv.nl</a>
+                    <br /><br />
+                    <strong>💬 @T("WhatsApp:", "WhatsApp:")</strong> <a href="https://wa.me/31402425000" target="_blank" rel="noopener noreferrer" style="color: #00c0a3; text-decoration: none;">+31 40 242 5000</a>
+                </div>
+
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <a href="https://www.psv.nl" target="_blank" rel="noopener noreferrer"
+                       style="display: inline-block; background: #003580; color: white; padding: 0.5rem 1rem; border-radius: 4px; text-decoration: none; font-size: 0.9rem;">
+                        🌐 @T("Website bezoeken", "Visit Website")
+                    </a>
+                    <a href="https://www.google.com/maps/search/Philips+Stadion+Eindhoven" target="_blank" rel="noopener noreferrer"
+                       style="display: inline-block; background: #00c0a3; color: white; padding: 0.5rem 1rem; border-radius: 4px; text-decoration: none; font-size: 0.9rem;">
+                        📍 @T("Routeplan", "Directions")
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stratumseind -->
+        <div style="border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            <img src="https://images.unsplash.com/photo-1514243906717-4017bc70c5d9?w=400&h=250&fit=crop" alt="Stratumseind" style="width: 100%; height: 200px; object-fit: cover;" />
+            <div style="padding: 1.5rem;">
+                <h3 style="margin-top: 0; color: #003580;">🍻 @T("Stratumseind", "Stratumseind")</h3>
+                <p>@T("De levendigste straat van Eindhoven vol met bars, restaurants en nachtleven. Ideaal voor avonduitjes.", "The liveliest street in Eindhoven full of bars, restaurants and nightlife. Ideal for nights out.")</p>
+
+                <!-- Contact Info -->
+                <div style="background: #f5f5f5; padding: 1rem; border-radius: 4px; margin: 1rem 0; font-size: 0.9rem;">
+                    <strong>📍 @T("Locatie:", "Location:")</strong><br />
+                    Stratumseind 1-100, 5611 NC Eindhoven
+                    <br /><br />
+                    <strong>📞 @T("Telefoon:", "Phone:")</strong> <a href="tel:+31402123456" style="color: #003580; text-decoration: none;">+31 (0)40 212 3456</a>
+                    <br /><br />
+                    <strong>✉️ @T("Email:", "Email:")</strong> <a href="mailto:info@stratumseind.nl" style="color: #003580; text-decoration: none;">info@stratumseind.nl</a>
+                    <br /><br />
+                    <strong>💬 @T("WhatsApp:", "WhatsApp:")</strong> <a href="https://wa.me/31402123456" target="_blank" rel="noopener noreferrer" style="color: #00c0a3; text-decoration: none;">+31 40 212 3456</a>
+                </div>
+
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <a href="https://www.stratumseind.nl" target="_blank" rel="noopener noreferrer"
+                       style="display: inline-block; background: #003580; color: white; padding: 0.5rem 1rem; border-radius: 4px; text-decoration: none; font-size: 0.9rem;">
+                        🌐 @T("Website bezoeken", "Visit Website")
+                    </a>
+                    <a href="https://www.google.com/maps/search/Stratumseind+Eindhoven" target="_blank" rel="noopener noreferrer"
+                       style="display: inline-block; background: #00c0a3; color: white; padding: 0.5rem 1rem; border-radius: 4px; text-decoration: none; font-size: 0.9rem;">
+                        📍 @T("Routeplan", "Directions")
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Van Abbe Museum -->
+        <div style="border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            <img src="https://images.unsplash.com/photo-1577720643272-265e434f9bea?w=400&h=250&fit=crop" alt="Van Abbe Museum" style="width: 100%; height: 200px; object-fit: cover;" />
+            <div style="padding: 1.5rem;">
+                <h3 style="margin-top: 0; color: #003580;">🎪 @T("Van Abbe Museum", "Van Abbe Museum")</h3>
+                <p>@T("Modernistische kunstmuseum met een indrukwekkende collectie moderne en hedendaagse kunst.", "Modern art museum with an impressive collection of modern and contemporary art.")</p>
+
+                <!-- Contact Info -->
+                <div style="background: #f5f5f5; padding: 1rem; border-radius: 4px; margin: 1rem 0; font-size: 0.9rem;">
+                    <strong>📍 @T("Locatie:", "Location:")</strong><br />
+                    Vonderstraat 1, 5616 GH Eindhoven
+                    <br /><br />
+                    <strong>📞 @T("Telefoon:", "Phone:")</strong> <a href="tel:+31404909400" style="color: #003580; text-decoration: none;">+31 (0)40 490 9400</a>
+                    <br /><br />
+                    <strong>✉️ @T("Email:", "Email:")</strong> <a href="mailto:info@vanabbemuseum.nl" style="color: #003580; text-decoration: none;">info@vanabbemuseum.nl</a>
+                    <br /><br />
+                    <strong>💬 @T("WhatsApp:", "WhatsApp:")</strong> <a href="https://wa.me/31404909400" target="_blank" rel="noopener noreferrer" style="color: #00c0a3; text-decoration: none;">+31 40 490 9400</a>
+                </div>
+
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <a href="https://www.vanabbemuseum.nl" target="_blank" rel="noopener noreferrer"
+                       style="display: inline-block; background: #003580; color: white; padding: 0.5rem 1rem; border-radius: 4px; text-decoration: none; font-size: 0.9rem;">
+                        🌐 @T("Website bezoeken", "Visit Website")
+                    </a>
+                    <a href="https://www.google.com/maps/search/Van+Abbe+Museum+Eindhoven" target="_blank" rel="noopener noreferrer"
+                       style="display: inline-block; background: #00c0a3; color: white; padding: 0.5rem 1rem; border-radius: 4px; text-decoration: none; font-size: 0.9rem;">
+                        📍 @T("Routeplan", "Directions")
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Back to Home -->
+    <div style="text-align: center; margin-top: 3rem;">
+        <a href="/" style="display: inline-block; background: #003580; color: white; padding: 0.75rem 1.5rem; border-radius: 4px; text-decoration: none; font-weight: 600;">
+            ← @T("Terug naar startpagina", "Back to Home")
+        </a>
+    </div>
+</div>
+
+<style>
+    a {
+        color: #003580;
+    }
+
+    a:hover {
+        text-decoration: underline;
+    }
+</style>

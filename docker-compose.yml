@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  area42-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.ApiService
+    ports:
+      - "7001:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=Area42;User Id=sa;Password=YourPassword123!;Encrypt=false;TrustServerCertificate=True;
+    depends_on:
+      - sqlserver
+    networks:
+      - area42-network
+
+  area42-web:
+    build:
+      context: .
+      dockerfile: Dockerfile.Web
+    ports:
+      - "3000:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:80
+      - ApiUrl=http://area42-api:80
+    depends_on:
+      - area42-api
+    networks:
+      - area42-network
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: YourPassword123!
+      MSSQL_PID: Express
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    networks:
+      - area42-network
+
+volumes:
+  sqlserver_data:
+
+networks:
+  area42-network:
+    driver: bridge

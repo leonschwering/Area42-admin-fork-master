@@ -1,0 +1,76 @@
+@using Area42_1.Web.Models
+@inherits LocalizedComponentBase
+
+<div>
+    <h2>@T("Overzicht", "Overview")</h2>
+    <p class="text-muted">@T("Sleutelmetrieken en systeemstatus", "Key metrics and system status")</p>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin: 2rem 0;">
+        <!-- Total Accommodations -->
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <div style="font-size: 0.9rem; opacity: 0.9;">@T("Totaal accommodaties", "Total Accommodations")</div>
+            <div style="font-size: 2rem; font-weight: bold; margin: 0.5rem 0;">15</div>
+            <small>@T("Goed onderhouden", "Well maintained")</small>
+        </div>
+
+        <!-- Active Reservations -->
+        <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <div style="font-size: 0.9rem; opacity: 0.9;">@T("Actieve reserveringen", "Active Reservations")</div>
+            <div style="font-size: 2rem; font-weight: bold; margin: 0.5rem 0;">42</div>
+            <small>@T("Deze maand: 38 boekingen", "This month: 38 bookings")</small>
+        </div>
+
+        <!-- Total Revenue -->
+        <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <div style="font-size: 0.9rem; opacity: 0.9;">@T("Totale omzet", "Total Revenue")</div>
+            <div style="font-size: 2rem; font-weight: bold; margin: 0.5rem 0;">€24,500</div>
+            <small>@T("Laatste 30 dagen", "Last 30 days")</small>
+        </div>
+
+        <!-- System Health -->
+        <div style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <div style="font-size: 0.9rem; opacity: 0.9;">@T("Systeemstatus", "System Status")</div>
+            <div style="font-size: 2rem; font-weight: bold; margin: 0.5rem 0;">✅ @T("Operationeel", "Operational")</div>
+            <small>@T("Alle services normaal", "All services normal")</small>
+        </div>
+    </div>
+
+    <!-- Security Status -->
+    <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #17a2b8; margin-top: 2rem;">
+        <h4 style="margin-top: 0;">🔒 @T("Veiligheidsstatus", "Security Status")</h4>
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+            <tr style="border-bottom: 1px solid #ddd;">
+                <td style="padding: 0.75rem;">@T("Alle admins online", "All admins online")</td>
+                <td style="text-align: right; padding: 0.75rem;">✅ @T("Actief", "Active")</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #ddd;">
+                <td style="padding: 0.75rem;">@T("Auditlogboeken", "Audit logs")</td>
+                <td style="text-align: right; padding: 0.75rem;">✅ @T("Opnemen", "Recording")</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #ddd;">
+                <td style="padding: 0.75rem;">@T("SIEM monitoring", "SIEM monitoring")</td>
+                <td style="text-align: right; padding: 0.75rem;">✅ @T("Actief", "Active")</td>
+            </tr>
+            <tr>
+                <td style="padding: 0.75rem;">@T("Kill Switch gereed", "Kill Switch ready")</td>
+                <td style="text-align: right; padding: 0.75rem;">✅ @T("Gereed", "Ready")</td>
+            </tr>
+        </table>
+    </div>
+
+    @if (Sections.Contains("kill_switch"))
+    {
+        <div style="background: #fff3cd; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #ffc107; margin-top: 2rem;">
+            <h4 style="margin-top: 0;">🚨 @T("Kill Switch", "Kill Switch")</h4>
+            <p>@T("Noodmechanisme voor beveiligingsincidenten. Vereist twee-persoons-quorum.", "Emergency mechanism for security incidents. Requires two-person quorum.")</p>
+            <button class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#killSwitchModal">
+                @T("Kill Switch aanvraag", "Initiate Kill Switch")
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string[] Sections { get; set; } = Array.Empty<string>();
+}

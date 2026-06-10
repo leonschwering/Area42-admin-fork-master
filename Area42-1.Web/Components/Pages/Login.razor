@@ -1,0 +1,140 @@
+@page "/login"
+@inherits LocalizedComponentBase
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject CustomAuthStateProvider AuthStateProvider
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@using System.Text.Json
+@using Microsoft.AspNetCore.Components.Authorization
+
+<PageTitle>@T("Inloggen - Area42", "Login - Area42")</PageTitle>
+
+<div style="max-width: 400px; margin: 3rem auto; padding: 0 1rem;">
+    <div style="border: 1px solid #ddd; border-radius: 8px; padding: 2rem; background: white;">
+        <h2 style="text-align: center; margin-bottom: 2rem;">@T("Inloggen", "Login")</h2>
+
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <div style="background-color: #fee; color: #c33; padding: 1rem; border-radius: 4px; margin-bottom: 1rem; border: 1px solid #fcc;">
+                @_errorMessage
+            </div>
+        }
+
+        <form @onsubmit="HandleLogin">
+            <div style="margin-bottom: 1.5rem;">
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">@T("E-mail", "Email")</label>
+                <input type="email" 
+                       style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;" 
+                       placeholder="@T("jouw@email.com", "your@email.com")"
+                       @bind="_email"
+                       disabled="@_isLoading" />
+            </div>
+
+            <div style="margin-bottom: 1.5rem;">
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">@T("Wachtwoord", "Password")</label>
+                <input type="password" 
+                       style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;" 
+                       placeholder="••••••••"
+                       @bind="_password"
+                       disabled="@_isLoading" />
+            </div>
+
+            <button type="submit" 
+                    disabled="@_isLoading"
+                    style="width: 100%; background: #003580; color: white; padding: 0.75rem; border: none; border-radius: 4px; font-weight: 600; cursor: pointer; opacity: @(_isLoading ? "0.6" : "1");">
+                @if (_isLoading)
+                {
+                    <span>@T("Bezig met inloggen...", "Logging in...")</span>
+                }
+                else
+                {
+                    <span>@T("Inloggen", "Login")</span>
+                }
+            </button>
+        </form>
+
+        <p style="text-align: center; margin-top: 1.5rem;">
+            @T("Nog geen account?", "Don't have an account?") <a href="/register" style="color: #003580; text-decoration: none;">@T("Registreer hier", "Register here")</a>
+        </p>
+    </div>
+</div>
+
+@code {
+    private string _email = string.Empty;
+    private string _password = string.Empty;
+    private string _errorMessage = string.Empty;
+    private bool _isLoading = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Redirect if already authenticated
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        if (authState?.User?.Identity?.IsAuthenticated == true)
+        {
+            var isAdmin = authState.User.Claims.Any(c => (c.Type == "userType" && c.Value == "Admin") || 
+                                                           (c.Type == "isAdmin" && c.Value == "true"));
+
+            Navigation.NavigateTo(isAdmin ? "/admin" : "/");
+        }
+    }
+
+    private async Task HandleLogin()
+    {
+        _errorMessage = string.Empty;
+        _isLoading = true;
+
+        try
+        {
+            var loginRequest = new { email = _email, password = _password };
+
+            var response = await Http.PostAsJsonAsync("api/auth/login", loginRequest);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<LoginResponse>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                if (result?.Success == true && !string.IsNullOrEmpty(result.Token))
+                {
+                    // Store token and authenticate
+                    await AuthStateProvider.LoginAsync(result.Token);
+
+                    // Route based on user type
+                    if (result.IsAdmin)
+                    {
+                        Navigation.NavigateTo("/admin");
+                    }
+                    else
+                    {
+                        Navigation.NavigateTo("/");
+                    }
+                }
+                else
+                {
+                    _errorMessage = result?.Message ?? T("Inloggen mislukt", "Login failed");
+                }
+            }
+            else
+            {
+                _errorMessage = T("Inloggen mislukt. Controleer uw gegevens.", "Login failed. Please check your credentials.");
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    public class LoginResponse
+    {
+        public bool Success { get; set; }
+        public string? Message { get; set; }
+        public string? Token { get; set; }
+        public bool IsAdmin { get; set; }
+        public string? UserRank { get; set; }
+    }
+}

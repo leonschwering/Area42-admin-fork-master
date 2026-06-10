@@ -1,0 +1,50 @@
+﻿@page "/weather"
+@attribute [StreamRendering(true)]
+@attribute [OutputCache(Duration = 5)]
+@inherits LocalizedComponentBase
+
+@inject WeatherApiClient WeatherApi
+
+<PageTitle>@T("Weer", "Weather")</PageTitle>
+
+<h1>@T("Weer", "Weather")</h1>
+
+<p>@T("Deze component toont gegevens die zijn geladen vanuit een backend API-service.", "This component demonstrates showing data loaded from a backend API service.")</p>
+
+@if (forecasts == null)
+{
+    <p><em>@T("Laden...", "Loading...")</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>@T("Datum", "Date")</th>
+                <th aria-label="@T("Temperatuur in Celsius", "Temperature in Celsius")">@T("Temp. (C)", "Temp. (C)")</th>
+                <th aria-label="@T("Temperatuur in Fahrenheit", "Temperature in Fahrenheit")">@T("Temp. (F)", "Temp. (F)")</th>
+                <th>@T("Samenvatting", "Summary")</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var forecast in forecasts)
+            {
+                <tr>
+                    <td>@forecast.Date.ToShortDateString()</td>
+                    <td>@forecast.TemperatureC</td>
+                    <td>@forecast.TemperatureF</td>
+                    <td>@forecast.Summary</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private WeatherForecast[]? forecasts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        forecasts = await WeatherApi.GetWeatherAsync();
+    }
+}

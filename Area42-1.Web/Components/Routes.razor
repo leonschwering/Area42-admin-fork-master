@@ -1,0 +1,18 @@
+﻿@inherits LocalizedComponentBase
+
+<Router AppAssembly="typeof(Program).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <PageTitle>@T("Niet gevonden", "Not Found")</PageTitle>
+        <LayoutView Layout="typeof(Layout.MainLayout)">
+            <div class="container" style="padding: 2rem; text-align: center;">
+                <h1>@T("Pagina niet gevonden", "Page not found")</h1>
+                <p style="margin: 1rem 0;">@T("Sorry, de pagina die je zoekt bestaat niet.", "Sorry, the page you requested doesn't exist.")</p>
+                <a href="/" class="btn btn-primary">@T("Naar start", "Go to Home")</a>
+            </div>
+        </LayoutView>
+    </NotFound>
+</Router>

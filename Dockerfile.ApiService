@@ -1,0 +1,33 @@
+# Build stage
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+# Copy project files
+COPY ["Area42-1.ApiService/Area42-1.ApiService.csproj", "Area42-1.ApiService/"]
+COPY ["Area42-1.ServiceDefaults/Area42-1.ServiceDefaults.csproj", "Area42-1.ServiceDefaults/"]
+
+# Restore packages
+RUN dotnet restore "Area42-1.ApiService/Area42-1.ApiService.csproj"
+
+# Copy source code
+COPY . .
+
+# Build
+RUN dotnet build "Area42-1.ApiService/Area42-1.ApiService.csproj" -c Release -o /app/build
+
+# Publish
+FROM build AS publish
+RUN dotnet publish "Area42-1.ApiService/Area42-1.ApiService.csproj" -c Release -o /app/publish /p:UseAppHost=false
+
+# Runtime stage
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+WORKDIR /app
+EXPOSE 80 443
+
+# Install required dependencies for SQL Server
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=publish /app/publish .
+ENTRYPOINT ["dotnet", "Area42-1.ApiService.dll"]

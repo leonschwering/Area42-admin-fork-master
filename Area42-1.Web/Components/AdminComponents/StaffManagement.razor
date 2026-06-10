@@ -1,0 +1,147 @@
+@using Area42_1.Web.Models
+@inherits LocalizedComponentBase
+
+<div>
+    <h2>👥 @T("Personeelsbeheer", "Staff Management")</h2>
+
+    @if (Rank == AdminRank.SuperAdmin || Rank == AdminRank.Admin)
+    {
+        <div style="margin-bottom: 2rem;">
+            <button class="btn btn-sm btn-primary">
+                ➕ @T("Nieuwe personeelslid toevoegen", "Add Staff Member")
+            </button>
+            <button class="btn btn-sm btn-outline-secondary">
+                🔄 @T("HR-integratie", "HR Integration")
+            </button>
+        </div>
+
+        <!-- Staff List Table -->
+        <div style="background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead style="background: #f8f9fa; border-bottom: 1px solid #dee2e6;">
+                    <tr>
+                        <th style="padding: 1rem; text-align: left;">@T("Naam", "Name")</th>
+                        <th style="padding: 1rem; text-align: left;">@T("Email", "Email")</th>
+                        <th style="padding: 1rem; text-align: left;">@T("Rang", "Rank")</th>
+                        <th style="padding: 1rem; text-align: left;">@T("Status", "Status")</th>
+                        <th style="padding: 1rem; text-align: center;">@T("Acties", "Actions")</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var staff in DemoStaffMembers())
+                    {
+                        <tr style="border-bottom: 1px solid #dee2e6;">
+                            <td style="padding: 1rem;">@staff.FullName</td>
+                            <td style="padding: 1rem;">@staff.Email</td>
+                            <td style="padding: 1rem;">
+                                <span style="background: #e7f3ff; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.85rem;">
+                                    @FormatRank(staff.Rank)
+                                </span>
+                            </td>
+                            <td style="padding: 1rem;">
+                                @if (staff.IsEnabled && !staff.IsLocked)
+                                {
+                                    <span style="color: #28a745;">✅ @T("Actief", "Active")</span>
+                                }
+                                else if (staff.IsLocked)
+                                {
+                                    <span style="color: #dc3545;">🔒 @T("Vergrendeld", "Locked")</span>
+                                }
+                                else
+                                {
+                                    <span style="color: #999;">⭕ @T("Uitgeschakeld", "Disabled")</span>
+                                }
+                            </td>
+                            <td style="padding: 1rem; text-align: center;">
+                                <button class="btn btn-xs btn-outline-secondary" title="@T("Bewerken", "Edit")">✏️</button>
+                                <button class="btn btn-xs btn-outline-danger" title="@T("Deactiveren", "Deactivate")">🗑️</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <!-- VOG Management -->
+        <div style="background: #e8f4f8; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #17a2b8; margin-top: 2rem;">
+            <h5 style="margin-top: 0;">🎖️ @T("VOG (Verklaring Omtrent Gedrag)", "VOG Management")</h5>
+            <p>@T("Beheer VOG-goedkeuringen en vervaldagen voor alle personeelsleden.", "Manage VOG approvals and expiry dates for all staff members.")</p>
+            <a href="/admin/vog-management" class="btn btn-sm btn-outline-primary">@T("VOG-beheer", "Manage VOG")</a>
+        </div>
+
+        <!-- Intern Admin Supervision -->
+        <div style="background: #fff3cd; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #ffc107; margin-top: 2rem;">
+            <h5 style="margin-top: 0;">📚 @T("Stagiair Admin Toezicht", "Intern Admin Supervision")</h5>
+            <p>@T("Controleer in afwachting zijnde acties van stagiair admins die wachten op goedkeuring.", "Review pending actions from Intern Admins awaiting approval.")</p>
+            <a href="/admin/pending-actions" class="btn btn-sm btn-outline-warning">@T("In afwachting zijnde acties", "Pending Actions")</a>
+        </div>
+    }
+    else
+    {
+        <div style="background: #e7d4f5; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #6c63ff;">
+            <strong>@T("Geen personeelsrechten", "No Staff Permissions")</strong>
+            <p>@T("U bent niet gemachtigd om personeelsleden te beheren. Alleen Rank 1.2+ hebben toegang.", "You are not authorized to manage staff. Only Rank 1.2+ have access.")</p>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public AdminRank? Rank { get; set; }
+
+    private List<AdminUser> DemoStaffMembers()
+    {
+        return new()
+        {
+            new AdminUser 
+            { 
+                FullName = "Alice Johnson", 
+                Email = "alice@example.com", 
+                Rank = AdminRank.SuperAdmin,
+                IsEnabled = true,
+                LastLoginAt = DateTime.UtcNow.AddHours(-2)
+            },
+            new AdminUser 
+            { 
+                FullName = "Bob Smith", 
+                Email = "bob@example.com", 
+                Rank = AdminRank.Admin,
+                IsEnabled = true,
+                LastLoginAt = DateTime.UtcNow.AddHours(-6)
+            },
+            new AdminUser 
+            { 
+                FullName = "Charlie Brown", 
+                Email = "charlie@example.com", 
+                Rank = AdminRank.BookingManager,
+                IsEnabled = true,
+                LastLoginAt = DateTime.UtcNow.AddDays(-1)
+            },
+            new AdminUser 
+            { 
+                FullName = "Diana Prince", 
+                Email = "diana@example.com", 
+                Rank = AdminRank.InternAdmin,
+                IsEnabled = true,
+                InternshipEndDate = DateTime.UtcNow.AddMonths(3)
+            }
+        };
+    }
+
+    private string FormatRank(AdminRank? rank)
+    {
+        return rank switch
+        {
+            AdminRank.SuperAdmin => "1.1 - Systeembeheerder",
+            AdminRank.Admin => "1.2 - Beheerder",
+            AdminRank.SeniorManager => "1.3 - Senior Manager",
+            AdminRank.PropertyManager => "2.1 - Accommodatiebeheerder",
+            AdminRank.BookingManager => "2.2 - Reserveringsbeheerder",
+            AdminRank.CustomerSupport => "2.3 - Klantenondersteuning",
+            AdminRank.SeniorIntern => "3.1 - Senior Stagiair",
+            AdminRank.Intern => "3.2 - Stagiair",
+            AdminRank.InternAdmin => "IA - Stagiair Admin",
+            _ => "Onbekend"
+        };
+    }
+}

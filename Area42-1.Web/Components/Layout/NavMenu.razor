@@ -1,0 +1,104 @@
+﻿@inherits LocalizedComponentBase
+@using Microsoft.AspNetCore.Components.Authorization
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">Area42-1</a>
+        <AuthorizeView>
+            <Authorized>
+                <div style="margin-left: auto; color: white; font-size: 0.9rem;">
+                    @if (_isAdmin)
+                    {
+                        <span style="margin-right: 1rem;">👤 @T("Admin", "Admin")</span>
+                    }
+                    <button class="btn btn-sm btn-outline-light" @onclick="HandleLogout">
+                        @T("Uitloggen", "Logout")
+                    </button>
+                </div>
+            </Authorized>
+            <NotAuthorized>
+                <div style="margin-left: auto;">
+                    <a href="/login" class="btn btn-sm btn-outline-light">@T("Inloggen", "Sign In")</a>
+                </div>
+            </NotAuthorized>
+        </AuthorizeView>
+    </div>
+</div>
+
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="nav flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="bi bi-house-door-fill" aria-hidden="true"></span> @T("Start", "Home")
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="accommodations">
+                <span class="bi bi-house-fill" aria-hidden="true"></span> @T("Accommodaties", "Accommodations")
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="attractions">
+                <span class="bi bi-map" aria-hidden="true"></span> @T("Bezienswaardigheden", "Attractions")
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="counter">
+                <span class="bi bi-plus-square-fill" aria-hidden="true"></span> @T("Teller", "Counter")
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="weather">
+                <span class="bi bi-list-nested" aria-hidden="true"></span> @T("Weer", "Weather")
+            </NavLink>
+        </div>
+
+        <AuthorizeView>
+            <Authorized>
+                @if (_isAdmin)
+                {
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="admin">
+                            <span class="bi bi-shield-lock" aria-hidden="true"></span> @T("Admin Panel", "Admin Panel")
+                        </NavLink>
+                    </div>
+                }
+            </Authorized>
+        </AuthorizeView>
+    </nav>
+</div>
+
+@code {
+    [Inject] private AuthenticationStateProvider? AuthenticationStateProvider { get; set; }
+    [Inject] private CustomAuthStateProvider? AuthStateProvider { get; set; }
+    [Inject] private NavigationManager? Navigation { get; set; }
+
+    private bool _isAdmin = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider!.GetAuthenticationStateAsync();
+        var user = authState?.User;
+
+        if (user?.Identity?.IsAuthenticated == true)
+        {
+            _isAdmin = user.Claims.Any(c => (c.Type == "userType" && c.Value == "Admin") || 
+                                             (c.Type == "isAdmin" && c.Value == "true"));
+        }
+    }
+
+    private async Task HandleLogout()
+    {
+        if (AuthStateProvider != null)
+        {
+            await AuthStateProvider.LogoutAsync();
+        }
+        Navigation?.NavigateTo("/");
+    }
+}

@@ -1,0 +1,104 @@
+@page "/accommodations"
+@inherits LocalizedComponentBase
+
+<PageTitle>@T("Bekijk accommodaties - Area42", "Browse Accommodations - Area42")</PageTitle>
+
+<div style="max-width: 1200px; margin: 0 auto; padding: 0 1rem;">
+    <div style="margin-bottom: 2rem;">
+        <h1>🏘️ @T("Accommodaties in Eindhoven", "Accommodations in Eindhoven")</h1>
+        <p>@T("Bekijk en boek je perfecte accommodatie", "Browse and book your perfect accommodation")</p>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; margin-bottom: 2rem;">
+
+        <!-- Bungalow 1 -->
+        <div style="border: 1px solid #ddd; border-radius: 8px; padding: 1.5rem; background: white;">
+            <img src="https://images.unsplash.com/photo-1570129477492-45201b8edff0?w=400&h=250&fit=crop" alt="Modern Bungalow" style="width: 100%; height: 200px; object-fit: cover; border-radius: 4px; margin-bottom: 1rem;" />
+            <span style="display: inline-block; background: #003580; color: white; padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.875rem; margin-bottom: 0.5rem;">@T("Bungalow", "Bungalow")</span>
+            <h3 style="margin: 0.5rem 0;">@T("Moderne familiebungalow", "Modern Family Bungalow")</h3>
+            <div style="font-size: 1.5rem; font-weight: bold; color: #003580; margin: 0.5rem 0;">€150<span style="font-size: 0.875rem;">@T("/nacht", "/night")</span></div>
+            <p>@T("Prachtige moderne bungalow in Eindhoven met ruime leefruimtes en tuin.", "Beautiful modern bungalow in Eindhoven with spacious living areas and garden.")</p>
+            <div style="display: flex; gap: 1rem; margin: 1rem 0; flex-wrap: wrap; font-size: 0.875rem;">
+                <span>👥 4 @T("gasten", "guests")</span>
+                <span>🛏️ 2 @T("bedden", "beds")</span>
+                <span>🚿 1 @T("badkamer", "bath")</span>
+            </div>
+            <a href="#" style="display: block; background: #003580; color: white; padding: 0.75rem; border-radius: 4px; text-align: center; text-decoration: none; margin-top: 1rem;">@T("Reserveer nu", "Reserve Now")</a>
+        </div>
+
+        <!-- Chalet 1 -->
+        <div style="border: 1px solid #ddd; border-radius: 8px; padding: 1.5rem; background: white;">
+            <img src="https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=400&h=250&fit=crop" alt="Luxury Chalet" style="width: 100%; height: 200px; object-fit: cover; border-radius: 4px; margin-bottom: 1rem;" />
+            <span style="display: inline-block; background: #00c0a3; color: white; padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.875rem; margin-bottom: 0.5rem;">@T("Chalet", "Chalet")</span>
+            <h3 style="margin: 0.5rem 0;">@T("Luxe chalet op het platteland", "Luxury Countryside Chalet")</h3>
+            <div style="font-size: 1.5rem; font-weight: bold; color: #003580; margin: 0.5rem 0;">€200<span style="font-size: 0.875rem;">@T("/nacht", "/night")</span></div>
+            <p>@T("Premium chalet nabij Eindhoven met panoramisch uitzicht en moderne voorzieningen.", "Premium chalet near Eindhoven with panoramic views and modern amenities.")</p>
+            <div style="display: flex; gap: 1rem; margin: 1rem 0; flex-wrap: wrap; font-size: 0.875rem;">
+                <span>👥 6 @T("gasten", "guests")</span>
+                <span>🛏️ 3 @T("bedden", "beds")</span>
+                <span>🚿 2 @T("badkamers", "baths")</span>
+            </div>
+            <a href="#" style="display: block; background: #003580; color: white; padding: 0.75rem; border-radius: 4px; text-align: center; text-decoration: none; margin-top: 1rem;">@T("Reserveer nu", "Reserve Now")</a>
+        </div>
+
+        <!-- Camping 1 -->
+        <div style="border: 1px solid #ddd; border-radius: 8px; padding: 1.5rem; background: white;">
+            <img src="https://images.unsplash.com/photo-1478131143081-80f7f84ca84d?w=400&h=250&fit=crop" alt="Camping Site" style="width: 100%; height: 200px; object-fit: cover; border-radius: 4px; margin-bottom: 1rem;" />
+            <span style="display: inline-block; background: #ff9800; color: white; padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.875rem; margin-bottom: 0.5rem;">@T("Camping", "Camping")</span>
+            <h3 style="margin: 0.5rem 0;">@T("Natuurcamping", "Nature Camping Experience")</h3>
+            <div style="font-size: 1.5rem; font-weight: bold; color: #003580; margin: 0.5rem 0;">€35<span style="font-size: 0.875rem;">@T("/nacht", "/night")</span></div>
+            <p>@T("Prachtige campingplek in de natuur nabij Eindhoven. Perfect voor buitenliefhebbers.", "Beautiful camping spot in nature near Eindhoven. Perfect for outdoor enthusiasts.")</p>
+            <div style="display: flex; gap: 1rem; margin: 1rem 0; flex-wrap: wrap; font-size: 0.875rem;">
+                <span>👥 2+ @T("gasten", "guests")</span>
+                <span>⛺ @T("Tentenplek", "Tent site")</span>
+                <span>🔥 @T("Vuurplaats", "Fire pit")</span>
+            </div>
+            <a href="#" style="display: block; background: #003580; color: white; padding: 0.75rem; border-radius: 4px; text-align: center; text-decoration: none; margin-top: 1rem;">@T("Reserveer nu", "Reserve Now")</a>
+        </div>
+
+        <!-- Bungalow 2 -->
+        <div style="border: 1px solid #ddd; border-radius: 8px; padding: 1.5rem; background: white;">
+            <img src="https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&h=250&fit=crop" alt="Cozy Bungalow" style="width: 100%; height: 200px; object-fit: cover; border-radius: 4px; margin-bottom: 1rem;" />
+            <span style="display: inline-block; background: #003580; color: white; padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.875rem; margin-bottom: 0.5rem;">@T("Bungalow", "Bungalow")</span>
+            <h3 style="margin: 0.5rem 0;">@T("Gezellige tuinbungalow", "Cozy Garden Bungalow")</h3>
+            <div style="font-size: 1.5rem; font-weight: bold; color: #003580; margin: 0.5rem 0;">€140<span style="font-size: 0.875rem;">@T("/nacht", "/night")</span></div>
+            <p>@T("Intieme bungalow met prachtige tuin in een Eindhovense buitenwijk. Ideaal voor koppels.", "Intimate bungalow with beautiful garden in Eindhoven suburb. Great for couples.")</p>
+            <div style="display: flex; gap: 1rem; margin: 1rem 0; flex-wrap: wrap; font-size: 0.875rem;">
+                <span>👥 2 @T("gasten", "guests")</span>
+                <span>🛏️ 1 @T("bed", "bed")</span>
+                <span>🚿 1 @T("badkamer", "bath")</span>
+            </div>
+            <a href="#" style="display: block; background: #003580; color: white; padding: 0.75rem; border-radius: 4px; text-align: center; text-decoration: none; margin-top: 1rem;">@T("Reserveer nu", "Reserve Now")</a>
+        </div>
+
+        <!-- Chalet 2 -->
+        <div style="border: 1px solid #ddd; border-radius: 8px; padding: 1.5rem; background: white;">
+            <img src="https://images.unsplash.com/photo-1578037014386-3c5f1f7c7325?w=400&h=250&fit=crop" alt="Mountain Chalet" style="width: 100%; height: 200px; object-fit: cover; border-radius: 4px; margin-bottom: 1rem;" />
+            <span style="display: inline-block; background: #00c0a3; color: white; padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.875rem; margin-bottom: 0.5rem;">@T("Chalet", "Chalet")</span>
+            <h3 style="margin: 0.5rem 0;">@T("Alpien bergchalet", "Alpine Mountain Chalet")</h3>
+            <div style="font-size: 1.5rem; font-weight: bold; color: #003580; margin: 0.5rem 0;">€220<span style="font-size: 0.875rem;">@T("/nacht", "/night")</span></div>
+            <p>@T("Exclusief bergchalet nabij Eindhoven met premium faciliteiten en prachtig uitzicht.", "Exclusive mountain chalet near Eindhoven with premium facilities and stunning views.")</p>
+            <div style="display: flex; gap: 1rem; margin: 1rem 0; flex-wrap: wrap; font-size: 0.875rem;">
+                <span>👥 8 @T("gasten", "guests")</span>
+                <span>🛏️ 4 @T("bedden", "beds")</span>
+                <span>🚿 3 @T("badkamers", "baths")</span>
+            </div>
+            <a href="#" style="display: block; background: #003580; color: white; padding: 0.75rem; border-radius: 4px; text-align: center; text-decoration: none; margin-top: 1rem;">@T("Reserveer nu", "Reserve Now")</a>
+        </div>
+
+        <!-- Camping 2 -->
+        <div style="border: 1px solid #ddd; border-radius: 8px; padding: 1.5rem; background: white;">
+            <img src="https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=400&h=250&fit=crop" alt="Forest Camping" style="width: 100%; height: 200px; object-fit: cover; border-radius: 4px; margin-bottom: 1rem;" />
+            <span style="display: inline-block; background: #ff9800; color: white; padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.875rem; margin-bottom: 0.5rem;">@T("Camping", "Camping")</span>
+            <h3 style="margin: 0.5rem 0;">@T("Boscamping avontuur", "Forest Camping Adventure")</h3>
+            <div style="font-size: 1.5rem; font-weight: bold; color: #003580; margin: 0.5rem 0;">€30<span style="font-size: 0.875rem;">@T("/nacht", "/night")</span></div>
+            <p>@T("Budgetcamping in een prachtig bosgebied nabij Eindhoven. Paradijs voor natuurliefhebbers.", "Budget camping in scenic forest area near Eindhoven. Nature lovers' paradise.")</p>
+            <div style="display: flex; gap: 1rem; margin: 1rem 0; flex-wrap: wrap; font-size: 0.875rem;">
+                <span>👥 4 @T("gasten", "guests")</span>
+                <span>⛺ @T("Camperplek", "Camper spot")</span>
+                <span>🌲 @T("Boszicht", "Forest view")</span>
+            </div>
+            <a href="#" style="display: block; background: #003580; color: white; padding: 0.75rem; border-radius: 4px; text-align: center; text-decoration: none; margin-top: 1rem;">@T("Reserveer nu", "Reserve Now")</a>
+        </div>
+    </div>
+</div>

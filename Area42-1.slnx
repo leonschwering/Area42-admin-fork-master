@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="Area42-1.ApiService/Area42-1.ApiService.csproj" />
+  <Project Path="Area42-1.AppHost/Area42-1.AppHost.csproj" />
+  <Project Path="Area42-1.ServiceDefaults/Area42-1.ServiceDefaults.csproj" />
+  <Project Path="Area42-1.Web/Area42-1.Web.csproj" />
+</Solution>

@@ -1,0 +1,60 @@
+{
+  "family": "Area42-API-Task",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::ACCOUNT_ID:role/Area42ApiTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::ACCOUNT_ID:role/Area42ApiTaskRole",
+  "containerDefinitions": [
+    {
+      "name": "area42-api",
+      "image": "DOCKER_IMAGE_URI",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 80,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "ASPNETCORE_ENVIRONMENT",
+          "value": "Production"
+        },
+        {
+          "name": "ASPNETCORE_URLS",
+          "value": "http://+:80"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "ConnectionStrings__DefaultConnection",
+          "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:area42/db-connection-string"
+        },
+        {
+          "name": "Jwt__Key",
+          "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:area42/jwt-key"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/area42-api",
+          "awslogs-region": "REGION",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "curl -f http://localhost/health || exit 1"
+        ],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      }
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+﻿@page "/counter"
+@rendermode InteractiveServer
+@inherits LocalizedComponentBase
+
+<PageTitle>@T("Teller", "Counter")</PageTitle>
+
+<h1>@T("Teller", "Counter")</h1>
+
+<p role="status">@T("Huidige stand:", "Current count:") @currentCount</p>
+
+<button class="btn btn-primary" @onclick="IncrementCount">@T("Klik hier", "Click me")</button>
+
+@code {
+    private int currentCount = 0;
+
+    private void IncrementCount()
+    {
+        currentCount++;
+    }
+}

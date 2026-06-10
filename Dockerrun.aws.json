@@ -1,0 +1,11 @@
+{
+  "AWSEBDockerrunVersion": "1",
+  "Build": {
+    "Dockerfile": "Dockerfile.Web"
+  },
+  "Ports": [
+    {
+      "ContainerPort": 80
+    }
+  ]
+}

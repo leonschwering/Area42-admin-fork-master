@@ -1,0 +1,108 @@
+@using Area42_1.Web.Models
+@using Area42_1.Web.Services
+@inherits LocalizedComponentBase
+@inject KillSwitchService KillSwitchService
+
+<div>
+    <h2>🔒 @T("Veiligheidsdashboard", "Security Dashboard")</h2>
+
+    @if (Rank == AdminRank.SuperAdmin || Rank == AdminRank.Admin)
+    {
+        <div style="margin: 2rem 0;">
+            <!-- Kill Switch Panel -->
+            <div style="background: #fee; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #dc3545; margin-bottom: 2rem;">
+                <h4 style="margin-top: 0; color: #dc3545;">🚨 @T("Kill Switch - Twee-persoons-quorum", "Kill Switch - Two-Person Quorum")</h4>
+                <p style="margin-bottom: 1rem;">@T("Noodmechanisme voor onmiddellijke neutralisatie van beveiligingsincidenten. Slechts beschikbaar voor Rank 1.1 en 1.2.", "Emergency mechanism for immediate neutralization of security incidents. Only available to Rank 1.1 and 1.2.")</p>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1rem 0;">
+                    <button class="btn btn-outline-danger btn-sm" @onclick="() => ShowKillSwitchModal(1)">
+                        <strong>KS-1</strong><br/>
+                        @T("Account vergrendelen", "Account Lock")
+                    </button>
+                    @if (Rank == AdminRank.SuperAdmin)
+                    {
+                        <button class="btn btn-outline-danger btn-sm" @onclick="() => ShowKillSwitchModal(2)">
+                            <strong>KS-2</strong><br/>
+                            @T("Admin-domein vergrendelen", "Admin Domain Lock")
+                        </button>
+                        <button class="btn btn-danger btn-sm" @onclick="() => ShowKillSwitchModal(3)">
+                            <strong>KS-3</strong><br/>
+                            @T("Volledig systeemvergrendelen", "Full System Lock")
+                        </button>
+                    }
+                </div>
+            </div>
+
+            <!-- Pending Kill Switch Requests -->
+            @if (pendingRequests.Any())
+            {
+                <div style="background: #fff3cd; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #ffc107; margin-bottom: 2rem;">
+                    <h5>⏳ @T("In afwachting van Kill Switch aanvragen", "Pending Kill Switch Requests")</h5>
+                    <div style="max-height: 400px; overflow-y: auto;">
+                        @foreach (var req in pendingRequests)
+                        {
+                            <div style="background: white; padding: 1rem; margin-bottom: 0.5rem; border-radius: 4px; border-left: 3px solid #ffc107;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <strong>@T("Aanvraag:", "Request:") KS-@((int)req.Level)</strong><br/>
+                                        <small style="color: #666;">@T("Reden:", "Reason:") @req.Reason</small><br/>
+                                        <small style="color: #999;">@T("Afloopt in:", "Expires in:") @((req.ExpiresAt - DateTime.UtcNow).TotalMinutes.ToString("F0")) min</small>
+                                    </div>
+                                    <button class="btn btn-sm btn-success" @onclick="() => ConfirmKillSwitch(req.Id)">
+                                        @T("Bevestigen", "Confirm")
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            <!-- Audit Log Access -->
+            <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
+                <h5>📋 @T("Auditlogboeken", "Audit Logs")</h5>
+                <p>@T("Alle beheerdersacties worden onveranderbaar geregistreerd.", "All admin actions are immutably logged.")</p>
+                <a href="/admin/audit-logs" class="btn btn-sm btn-outline-primary">@T("Auditlogboeken bekijken", "View Audit Logs")</a>
+            </div>
+
+            <!-- Security Flags -->
+            <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px;">
+                <h5>🚩 @T("Beveiligingsvlaggen (SIEM)", "Security Flags (SIEM)")</h5>
+                <p>@T("Gedragsafwijkingen en verdachte patronen die automatisch zijn gedetecteerd.", "Behavioral anomalies and suspicious patterns detected automatically.")</p>
+                <a href="/admin/security-flags" class="btn btn-sm btn-outline-warning">@T("Beveiligingsvlaggen controleren", "Review Security Flags")</a>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div style="background: #e7d4f5; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #6c63ff;">
+            <strong>@T("Geen beveiligingsrechten", "No Security Permissions")</strong>
+            <p>@T("U bent niet gemachtigd om beveiliging instellingen te beheren. Alleen Rank 1.1 en 1.2 hebben toegang.", "You are not authorized to manage security settings. Only Rank 1.1 and 1.2 have access.")</p>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public AdminRank? Rank { get; set; }
+
+    private List<KillSwitchRequest> pendingRequests = new();
+
+    protected override void OnInitialized()
+    {
+        pendingRequests = KillSwitchService.GetPendingRequests().ToList();
+    }
+
+    private void ShowKillSwitchModal(int level)
+    {
+        // Show modal - implementation depends on chosen modal library
+        Console.WriteLine($"Show Kill Switch modal for level {level}");
+    }
+
+    private async Task ConfirmKillSwitch(Guid requestId)
+    {
+        var (success, message) = await KillSwitchService.ConfirmKillSwitchAsync(requestId, "current-user-id");
+        // Show toast notification with result
+        StateHasChanged();
+    }
+}
