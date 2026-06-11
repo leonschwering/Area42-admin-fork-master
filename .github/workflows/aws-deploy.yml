@@ -1,161 +1,99 @@
-name: Build and Deploy to AWS
+name: Deploy Area42 to AWS
 
 on:
-  push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main, develop]
+  workflow_dispatch:
 
 env:
-  AWS_REGION: eu-west-1
-  ECR_REPOSITORY_API: area42-api
-  ECR_REPOSITORY_WEB: area42-web
+  AWS_REGION: eu-central-1
+  AWS_ACCOUNT_ID: "074693480758"
+
+  ECS_CLUSTER: area42-simple-cluster
+
+  API_ECR_REPOSITORY: area42-simple-api
+  API_SERVICE: area42-simple-api-service
+  API_TASK_DEFINITION: area42-simple-api-task
+  API_CONTAINER_NAME: area42-simple-api
+
+  WEB_ECR_REPOSITORY: area42-simple-web
+  WEB_SERVICE: area42-simple-web-service
+  WEB_TASK_DEFINITION: area42-simple-web-task
+  WEB_CONTAINER_NAME: area42-simple-web
 
 jobs:
-  build:
+  deploy:
+    name: Build, push and deploy
     runs-on: ubuntu-latest
-    outputs:
-      image-api: ${{ steps.image-api.outputs.image }}
-      image-web: ${{ steps.image-web.outputs.image }}
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
+        uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build, tag, and push API image to Amazon ECR
-        id: image-api
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
+      - name: Build and push API image
         run: |
-          docker build -f Dockerfile.ApiService -t $ECR_REGISTRY/$ECR_REPOSITORY_API:$IMAGE_TAG .
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY_API:$IMAGE_TAG
-          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY_API:$IMAGE_TAG" >> $GITHUB_OUTPUT
+          API_IMAGE=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$API_ECR_REPOSITORY:latest
+          docker build -f Dockerfile.Api -t $API_IMAGE .
+          docker push $API_IMAGE
+          echo "API_IMAGE=$API_IMAGE" >> $GITHUB_ENV
 
-      - name: Build, tag, and push Web image to Amazon ECR
-        id: image-web
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
+      - name: Build and push Web image
         run: |
-          docker build -f Dockerfile.Web -t $ECR_REGISTRY/$ECR_REPOSITORY_WEB:$IMAGE_TAG .
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY_WEB:$IMAGE_TAG
-          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY_WEB:$IMAGE_TAG" >> $GITHUB_OUTPUT
+          WEB_IMAGE=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$WEB_ECR_REPOSITORY:latest
+          docker build -f Dockerfile.Web -t $WEB_IMAGE .
+          docker push $WEB_IMAGE
+          echo "WEB_IMAGE=$WEB_IMAGE" >> $GITHUB_ENV
 
-  test:
-    runs-on: ubuntu-latest
-    needs: build
+      - name: Download API task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition $API_TASK_DEFINITION \
+            --query taskDefinition \
+            > api-task-definition.json
 
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v3
-        with:
-          dotnet-version: '10.0'
-
-      - name: Restore dependencies
-        run: dotnet restore
-
-      - name: Build solution
-        run: dotnet build --configuration Release --no-restore
-
-      - name: Run unit tests
-        run: dotnet test --configuration Release --no-build --verbosity normal
-
-  deploy-staging:
-    runs-on: ubuntu-latest
-    needs: [build, test]
-    if: github.ref == 'refs/heads/develop'
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Update ECS task definition - API
-        id: task-def-api
+      - name: Render API task definition
+        id: render-api-task
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
-          task-definition: aws/ecs-task-definition-api.json
-          container-name: area42-api
-          image: ${{ needs.build.outputs.image-api }}
+          task-definition: api-task-definition.json
+          container-name: ${{ env.API_CONTAINER_NAME }}
+          image: ${{ env.API_IMAGE }}
 
-      - name: Update ECS task definition - Web
-        id: task-def-web
-        uses: aws-actions/amazon-ecs-render-task-definition@v1
+      - name: Deploy API service
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
-          task-definition: ${{ steps.task-def-api.outputs.task-definition }}
-          container-name: area42-web
-          image: ${{ needs.build.outputs.image-web }}
-
-      - name: Deploy to Amazon ECS - Staging
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
-        with:
-          task-definition: ${{ steps.task-def-web.outputs.task-definition }}
-          service: area42-api-service-staging
-          cluster: Area42-Cluster-Staging
+          task-definition: ${{ steps.render-api-task.outputs.task-definition }}
+          service: ${{ env.API_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
           wait-for-service-stability: true
 
-  deploy-production:
-    runs-on: ubuntu-latest
-    needs: [build, test]
-    if: github.ref == 'refs/heads/main'
-    environment: production
+      - name: Download Web task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition $WEB_TASK_DEFINITION \
+            --query taskDefinition \
+            > web-task-definition.json
 
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Update ECS task definition - API
-        id: task-def-api
+      - name: Render Web task definition
+        id: render-web-task
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
-          task-definition: aws/ecs-task-definition-api.json
-          container-name: area42-api
-          image: ${{ needs.build.outputs.image-api }}
+          task-definition: web-task-definition.json
+          container-name: ${{ env.WEB_CONTAINER_NAME }}
+          image: ${{ env.WEB_IMAGE }}
 
-      - name: Update ECS task definition - Web
-        id: task-def-web
-        uses: aws-actions/amazon-ecs-render-task-definition@v1
+      - name: Deploy Web service
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
-          task-definition: ${{ steps.task-def-api.outputs.task-definition }}
-          container-name: area42-web
-          image: ${{ needs.build.outputs.image-web }}
-
-      - name: Deploy to Amazon ECS - Production
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
-        with:
-          task-definition: ${{ steps.task-def-web.outputs.task-definition }}
-          service: area42-api-service-prod
-          cluster: Area42-Cluster
+          task-definition: ${{ steps.render-web-task.outputs.task-definition }}
+          service: ${{ env.WEB_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
           wait-for-service-stability: true
-
-      - name: Send deployment notification
-        if: success()
-        uses: 8398a7/action-slack@v3
-        with:
-          status: ${{ job.status }}
-          text: 'Area42 deployed to production successfully!'
-          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
