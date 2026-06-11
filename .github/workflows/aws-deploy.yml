@@ -39,10 +39,12 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build and push API image
+        id: build-api
         run: |
           API_IMAGE=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$API_ECR_REPOSITORY:latest
           docker build -f Dockerfile.ApiService -t $API_IMAGE .
           docker push $API_IMAGE
+          echo "image=$API_IMAGE" >> $GITHUB_OUTPUT
 
       - name: Build and push Web image
         run: |
@@ -64,7 +66,7 @@ jobs:
         with:
           task-definition: api-task-definition.json
           container-name: ${{ env.API_CONTAINER_NAME }}
-          image: ${{ env.API_IMAGE }}
+          image: ${{ steps.build-api.outputs.image }}
 
       - name: Deploy API service
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
