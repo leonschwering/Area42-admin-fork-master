@@ -41,9 +41,8 @@ jobs:
       - name: Build and push API image
         run: |
           API_IMAGE=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$API_ECR_REPOSITORY:latest
-          docker build -f Dockerfile.Api -t $API_IMAGE .
+          docker build -f Dockerfile.ApiService -t $API_IMAGE .
           docker push $API_IMAGE
-          echo "API_IMAGE=$API_IMAGE" >> $GITHUB_ENV
 
       - name: Build and push Web image
         run: |
