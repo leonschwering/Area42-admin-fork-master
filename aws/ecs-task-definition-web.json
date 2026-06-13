@@ -4,8 +4,8 @@
   "requiresCompatibilities": ["FARGATE"],
   "cpu": "512",
   "memory": "1024",
-  "executionRoleArn": "arn:aws:iam::ACCOUNT_ID:role/Area42ApiTaskExecutionRole",
-  "taskRoleArn": "arn:aws:iam::ACCOUNT_ID:role/Area42ApiTaskRole",
+  "executionRoleArn": "arn:aws:iam::ACCOUNT_ID:role/Area42WebTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::ACCOUNT_ID:role/Area42WebTaskRole",
   "containerDefinitions": [
     {
       "name": "area42-web",
@@ -27,8 +27,8 @@
           "value": "http://+:80"
         },
         {
-          "name": "ApiUrl",
-          "value": "http://area42-api-service:80"
+          "name": "AREA42_THEME",
+          "value": "blue"
         }
       ],
       "logConfiguration": {

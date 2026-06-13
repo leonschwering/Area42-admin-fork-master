@@ -1,58 +1,67 @@
-﻿@inherits LayoutComponentBase
-@implements IDisposable
-@inject Area42_1.Web.Components.Services.AppUiState UiState
+@inherits LayoutComponentBase
+@inject IConfiguration Configuration
 
-@code {
-    protected override async Task OnInitializedAsync()
-    {
-        UiState.OnChange += StateHasChanged;
-        await base.OnInitializedAsync();
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
+<header class="site-header">
+    <div class="shell header-inner">
+        <a class="brand" href="/" aria-label="Area42 home">
+            <span class="brand-mark">A</span>
+            <span>AREA<strong>42</strong></span>
+        </a>
+        <nav class="main-nav" aria-label="Hoofdnavigatie">
+            <a href="#verblijven">Verblijven</a>
+            <a href="#beleven">Beleven</a>
+            <a href="#beleven">Het park</a>
+            <a href="#footer">Contact</a>
+        </nav>
+        @if (IsTestEnvironment)
         {
-            await UiState.InitializeAsync();
+            <span class="environment-badge">Testomgeving</span>
         }
-    }
-
-    public void Dispose()
-    {
-        UiState.OnChange -= StateHasChanged;
-    }
-
-    private string T(string dutch, string english) => UiState.Language == "nl" ? dutch : english;
-
-    private Task ToggleLanguageAsync() => UiState.ToggleLanguageAsync();
-
-    private Task ToggleThemeAsync() => UiState.ToggleThemeAsync();
-}
-
-<nav class="navbar" style="background-color: #003580; padding: 1rem 0; margin-bottom: 2rem;">
-    <div class="container" style="display: flex; justify-content: space-between; align-items: center; max-width: 1200px; margin: 0 auto; padding: 0 1rem;">
-        <div style="font-size: 1.5rem; font-weight: bold; color: white;">
-            <a href="/" style="color: white; text-decoration: none;">🏡 Area42</a>
-        </div>
-        <div style="display: flex; gap: 2rem; align-items: center;">
-            <a href="/" style="color: white; text-decoration: none;">@T("Start", "Home")</a>
-            <a href="/accommodations" style="color: white; text-decoration: none;">@T("Accommodaties", "Accommodations")</a>
-            <a href="/login" style="color: white; text-decoration: none;">@T("Inloggen", "Login")</a>
-            <button class="btn btn-outline" style="border-color: white; color: white; padding: 0.4rem 0.8rem;" @onclick="ToggleLanguageAsync">
-                @(UiState.Language == "nl" ? "English" : "Nederlands")
-            </button>
-            <button class="theme-toggle" style="color: white;" @onclick="ToggleThemeAsync" aria-label="Toggle theme">
-                @(UiState.Theme == "dark" ? "☀️" : "🌙")
-            </button>
-        </div>
+        <a class="button header-button" href="#zoeken">Boek je verblijf</a>
     </div>
-</nav>
+</header>
 
 <main>
     @Body
 </main>
 
-<footer style="background-color: #2d2d2d; color: #e0e0e0; padding: 2rem; text-align: center; margin-top: 4rem;">
-    <p>&copy; 2024 Area42 Reserveringssysteem. @T("Alle rechten voorbehouden.", "All rights reserved.")</p>
+<footer class="site-footer" id="footer">
+    <div class="shell footer-grid">
+        <div>
+            <a class="brand footer-brand" href="/">
+                <span class="brand-mark">A</span>
+                <span>AREA<strong>42</strong></span>
+            </a>
+            <p>Buitengewoon verblijven in het groen van de Achterhoek.</p>
+        </div>
+        <div>
+            <h3>Ontdek</h3>
+            <a href="#verblijven">Verblijven</a>
+            <a href="#beleven">Activiteiten</a>
+            <a href="#beleven">Faciliteiten</a>
+        </div>
+        <div>
+            <h3>Area42</h3>
+            <a href="#home">Over ons</a>
+            <a href="#footer">Contact</a>
+            <a href="#footer">Veelgestelde vragen</a>
+        </div>
+        <div>
+            <h3>Contact</h3>
+            <p>Boslaan 42<br />7241 AA Lochem</p>
+            <p>+31 (0)40 42 42 042<br />welkom@area42.nl</p>
+        </div>
+    </div>
+    <div class="shell footer-bottom">
+        <span>© 2026 Area42</span>
+        <span>Privacy · Voorwaarden · Cookies</span>
+    </div>
 </footer>
 
+@code {
+    private bool IsTestEnvironment =>
+        string.Equals(
+            Configuration["AREA42_THEME"] ?? Configuration["Area42Theme"],
+            "green",
+            StringComparison.OrdinalIgnoreCase);
+}

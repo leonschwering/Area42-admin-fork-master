@@ -4,7 +4,6 @@ WORKDIR /src
 
 # Copy project files
 COPY ["Area42-1.Web/Area42-1.Web.csproj", "Area42-1.Web/"]
-COPY ["Area42-1.ServiceDefaults/Area42-1.ServiceDefaults.csproj", "Area42-1.ServiceDefaults/"]
 
 # Restore packages
 RUN dotnet restore "Area42-1.Web/Area42-1.Web.csproj"
@@ -22,6 +21,10 @@ RUN dotnet publish "Area42-1.Web/Area42-1.Web.csproj" -c Release -o /app/publish
 # Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
 
 ENV ASPNETCORE_URLS=http://+:80
 EXPOSE 80
