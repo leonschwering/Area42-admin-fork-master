@@ -1,5 +1,5 @@
 {
-  "family": "Area42-API-Task",
+  "family": "area42-full-api-task",
   "networkMode": "awsvpc",
   "requiresCompatibilities": ["FARGATE"],
   "cpu": "512",
@@ -30,18 +30,18 @@
       "secrets": [
         {
           "name": "ConnectionStrings__DefaultConnection",
-          "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:area42/db-connection-string"
+          "valueFrom": "arn:aws:secretsmanager:eu-central-1:074693480758:secret:area42/db-connection-string"
         },
         {
           "name": "Jwt__Key",
-          "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:area42/jwt-key"
+          "valueFrom": "arn:aws:secretsmanager:eu-central-1:074693480758:secret:area42/jwt-key"
         }
       ],
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
-          "awslogs-group": "/ecs/area42-api",
-          "awslogs-region": "REGION",
+          "awslogs-group": "/ecs/area42-full-api",
+          "awslogs-region": "eu-central-1",
           "awslogs-stream-prefix": "ecs"
         }
       },

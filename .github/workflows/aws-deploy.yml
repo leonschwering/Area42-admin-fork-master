@@ -1,4 +1,4 @@
-name: Build and deploy Area42 to ECS
+name: Build and deploy Area42 web and API
 
 on:
   pull_request:
@@ -11,15 +11,21 @@ permissions:
   contents: read
 
 env:
-  AWS_REGION: eu-west-1
+  AWS_REGION: eu-central-1
   DOTNET_VERSION: 10.0.x
-  PROJECT: Area42-1.Web/Area42-1.Web.csproj
-  ECR_REPOSITORY: area42-web
-  CONTAINER_NAME: area42-web
+  ECS_CLUSTER: AREA42-FULL-CLUSTER
+  WEB_ECS_SERVICE: area42-full-web-service
+  API_ECS_SERVICE: area42-full-api-service
+  WEB_TASK_FAMILY: area42-full-web-task
+  API_TASK_FAMILY: area42-full-api-task
+  WEB_ECR_REPOSITORY: area42-full-web
+  API_ECR_REPOSITORY: area42-full-api
+  WEB_CONTAINER_NAME: area42-web
+  API_CONTAINER_NAME: area42-api
 
 jobs:
   verify:
-    name: Build and verify
+    name: Verify web and API
     runs-on: ubuntu-latest
 
     steps:
@@ -31,20 +37,20 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Restore
-        run: dotnet restore "${{ env.PROJECT }}"
+      - name: Restore solution
+        run: dotnet restore Area42-1.slnx
 
-      - name: Build
-        run: dotnet build "${{ env.PROJECT }}" --configuration Release --no-restore
+      - name: Build solution
+        run: dotnet build Area42-1.slnx --configuration Release --no-restore
 
-      - name: Publish
-        run: dotnet publish "${{ env.PROJECT }}" --configuration Release --no-build --output ./publish-check
+      - name: Build web container
+        run: docker build --file Dockerfile.Web --tag area42-full-web:${{ github.sha }} .
 
-      - name: Build Docker image
-        run: docker build --tag area42-web:${{ github.sha }} .
+      - name: Build API container
+        run: docker build --file Dockerfile.ApiService --tag area42-full-api:${{ github.sha }} .
 
-  publish-image:
-    name: Publish image to ECR
+  publish-web:
+    name: Publish web image
     if: github.event_name != 'pull_request'
     needs: verify
     runs-on: ubuntu-latest
@@ -66,25 +72,31 @@ jobs:
         id: ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build and push image
+      - name: Build and push web image
         id: image
         env:
           REGISTRY: ${{ steps.ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          IMAGE_URI="${REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
-          docker build --tag "${IMAGE_URI}" .
+          IMAGE_URI="${REGISTRY}/${WEB_ECR_REPOSITORY}:${IMAGE_TAG}"
+          docker build --file Dockerfile.Web --tag "${IMAGE_URI}" .
           docker push "${IMAGE_URI}"
+          docker tag "${IMAGE_URI}" "${REGISTRY}/${WEB_ECR_REPOSITORY}:latest"
+          docker push "${REGISTRY}/${WEB_ECR_REPOSITORY}:latest"
           echo "uri=${IMAGE_URI}" >> "${GITHUB_OUTPUT}"
 
-  deploy-test:
-    name: Deploy green test service
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/develop'
-    needs: publish-image
+  publish-api:
+    name: Publish API image
+    if: github.event_name != 'pull_request'
+    needs: verify
     runs-on: ubuntu-latest
-    environment: test
+    outputs:
+      image: ${{ steps.image.outputs.uri }}
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -92,75 +104,29 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Create new task definition revision
-        id: task
+      - name: Login to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push API image
+        id: image
         env:
-          CLUSTER: ${{ secrets.AWS_ECS_TEST_CLUSTER }}
-          SERVICE: ${{ secrets.AWS_ECS_TEST_SERVICE }}
-          IMAGE_URI: ${{ needs.publish-image.outputs.image }}
-          AREA42_THEME: green
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
         run: |
-          CURRENT_TASK_DEFINITION=$(aws ecs describe-services \
-            --cluster "${CLUSTER}" \
-            --services "${SERVICE}" \
-            --query "services[0].taskDefinition" \
-            --output text)
+          IMAGE_URI="${REGISTRY}/${API_ECR_REPOSITORY}:${IMAGE_TAG}"
+          docker build --file Dockerfile.ApiService --tag "${IMAGE_URI}" .
+          docker push "${IMAGE_URI}"
+          docker tag "${IMAGE_URI}" "${REGISTRY}/${API_ECR_REPOSITORY}:latest"
+          docker push "${REGISTRY}/${API_ECR_REPOSITORY}:latest"
+          echo "uri=${IMAGE_URI}" >> "${GITHUB_OUTPUT}"
 
-          aws ecs describe-task-definition \
-            --task-definition "${CURRENT_TASK_DEFINITION}" \
-            --query "taskDefinition" > current-task-definition.json
-
-          jq \
-            --arg image "${IMAGE_URI}" \
-            --arg container "${CONTAINER_NAME}" \
-            --arg theme "${AREA42_THEME}" \
-            'del(
-              .taskDefinitionArn,
-              .revision,
-              .status,
-              .requiresAttributes,
-              .compatibilities,
-              .registeredAt,
-              .registeredBy
-            )
-            | .containerDefinitions |= map(
-                if .name == $container then
-                  .image = $image
-                  | .environment = (
-                      (.environment // [])
-                      | map(select(.name != "AREA42_THEME"))
-                      + [{"name": "AREA42_THEME", "value": $theme}]
-                    )
-                else .
-                end
-              )' current-task-definition.json > next-task-definition.json
-
-          TASK_DEFINITION_ARN=$(aws ecs register-task-definition \
-            --cli-input-json file://next-task-definition.json \
-            --query "taskDefinition.taskDefinitionArn" \
-            --output text)
-
-          echo "arn=${TASK_DEFINITION_ARN}" >> "${GITHUB_OUTPUT}"
-
-      - name: Deploy test service
-        env:
-          CLUSTER: ${{ secrets.AWS_ECS_TEST_CLUSTER }}
-          SERVICE: ${{ secrets.AWS_ECS_TEST_SERVICE }}
-          TASK_DEFINITION_ARN: ${{ steps.task.outputs.arn }}
-        run: |
-          aws ecs update-service \
-            --cluster "${CLUSTER}" \
-            --service "${SERVICE}" \
-            --task-definition "${TASK_DEFINITION_ARN}"
-
-          aws ecs wait services-stable \
-            --cluster "${CLUSTER}" \
-            --services "${SERVICE}"
-
-  deploy-production:
-    name: Deploy blue production service
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-    needs: publish-image
+  deploy-web:
+    name: Deploy web service
+    if: >-
+      github.event_name != 'pull_request' &&
+      github.ref == 'refs/heads/main'
+    needs: publish-web
     runs-on: ubuntu-latest
     environment: production
 
@@ -172,19 +138,22 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Create new task definition revision
-        id: task
+      - name: Deploy web image
         env:
-          CLUSTER: ${{ secrets.AWS_ECS_PRODUCTION_CLUSTER }}
-          SERVICE: ${{ secrets.AWS_ECS_PRODUCTION_SERVICE }}
-          IMAGE_URI: ${{ needs.publish-image.outputs.image }}
-          AREA42_THEME: blue
+          SERVICE: ${{ env.WEB_ECS_SERVICE }}
+          EXPECTED_TASK_FAMILY: ${{ env.WEB_TASK_FAMILY }}
+          IMAGE_URI: ${{ needs.publish-web.outputs.image }}
         run: |
           CURRENT_TASK_DEFINITION=$(aws ecs describe-services \
-            --cluster "${CLUSTER}" \
+            --cluster "${ECS_CLUSTER}" \
             --services "${SERVICE}" \
             --query "services[0].taskDefinition" \
             --output text)
+
+          if [[ "${CURRENT_TASK_DEFINITION}" != *"task-definition/${EXPECTED_TASK_FAMILY}:"* ]]; then
+            echo "Service ${SERVICE} does not use task family ${EXPECTED_TASK_FAMILY}."
+            exit 1
+          fi
 
           aws ecs describe-task-definition \
             --task-definition "${CURRENT_TASK_DEFINITION}" \
@@ -192,8 +161,7 @@ jobs:
 
           jq \
             --arg image "${IMAGE_URI}" \
-            --arg container "${CONTAINER_NAME}" \
-            --arg theme "${AREA42_THEME}" \
+            --arg container "${WEB_CONTAINER_NAME}" \
             'del(
               .taskDefinitionArn,
               .revision,
@@ -204,15 +172,7 @@ jobs:
               .registeredBy
             )
             | .containerDefinitions |= map(
-                if .name == $container then
-                  .image = $image
-                  | .environment = (
-                      (.environment // [])
-                      | map(select(.name != "AREA42_THEME"))
-                      + [{"name": "AREA42_THEME", "value": $theme}]
-                    )
-                else .
-                end
+                if .name == $container then .image = $image else . end
               )' current-task-definition.json > next-task-definition.json
 
           TASK_DEFINITION_ARN=$(aws ecs register-task-definition \
@@ -220,19 +180,81 @@ jobs:
             --query "taskDefinition.taskDefinitionArn" \
             --output text)
 
-          echo "arn=${TASK_DEFINITION_ARN}" >> "${GITHUB_OUTPUT}"
-
-      - name: Deploy production service
-        env:
-          CLUSTER: ${{ secrets.AWS_ECS_PRODUCTION_CLUSTER }}
-          SERVICE: ${{ secrets.AWS_ECS_PRODUCTION_SERVICE }}
-          TASK_DEFINITION_ARN: ${{ steps.task.outputs.arn }}
-        run: |
           aws ecs update-service \
-            --cluster "${CLUSTER}" \
+            --cluster "${ECS_CLUSTER}" \
             --service "${SERVICE}" \
-            --task-definition "${TASK_DEFINITION_ARN}"
+            --task-definition "${TASK_DEFINITION_ARN}" \
+            --force-new-deployment
 
           aws ecs wait services-stable \
-            --cluster "${CLUSTER}" \
+            --cluster "${ECS_CLUSTER}" \
+            --services "${SERVICE}"
+
+  deploy-api:
+    name: Deploy API service
+    if: >-
+      github.event_name != 'pull_request' &&
+      github.ref == 'refs/heads/main'
+    needs: publish-api
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy API image
+        env:
+          SERVICE: ${{ env.API_ECS_SERVICE }}
+          EXPECTED_TASK_FAMILY: ${{ env.API_TASK_FAMILY }}
+          IMAGE_URI: ${{ needs.publish-api.outputs.image }}
+        run: |
+          CURRENT_TASK_DEFINITION=$(aws ecs describe-services \
+            --cluster "${ECS_CLUSTER}" \
+            --services "${SERVICE}" \
+            --query "services[0].taskDefinition" \
+            --output text)
+
+          if [[ "${CURRENT_TASK_DEFINITION}" != *"task-definition/${EXPECTED_TASK_FAMILY}:"* ]]; then
+            echo "Service ${SERVICE} does not use task family ${EXPECTED_TASK_FAMILY}."
+            exit 1
+          fi
+
+          aws ecs describe-task-definition \
+            --task-definition "${CURRENT_TASK_DEFINITION}" \
+            --query "taskDefinition" > current-task-definition.json
+
+          jq \
+            --arg image "${IMAGE_URI}" \
+            --arg container "${API_CONTAINER_NAME}" \
+            'del(
+              .taskDefinitionArn,
+              .revision,
+              .status,
+              .requiresAttributes,
+              .compatibilities,
+              .registeredAt,
+              .registeredBy
+            )
+            | .containerDefinitions |= map(
+                if .name == $container then .image = $image else . end
+              )' current-task-definition.json > next-task-definition.json
+
+          TASK_DEFINITION_ARN=$(aws ecs register-task-definition \
+            --cli-input-json file://next-task-definition.json \
+            --query "taskDefinition.taskDefinitionArn" \
+            --output text)
+
+          aws ecs update-service \
+            --cluster "${ECS_CLUSTER}" \
+            --service "${SERVICE}" \
+            --task-definition "${TASK_DEFINITION_ARN}" \
+            --force-new-deployment
+
+          aws ecs wait services-stable \
+            --cluster "${ECS_CLUSTER}" \
             --services "${SERVICE}"

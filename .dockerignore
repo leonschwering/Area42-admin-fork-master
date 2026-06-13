@@ -1,0 +1,10 @@
+.git
+.github
+.vs
+.vscode
+**/bin
+**/obj
+**/App_Data
+*.user
+*.suo
+*.md

@@ -1,5 +1,5 @@
 {
-  "family": "Area42-Web-Task",
+  "family": "area42-full-web-task",
   "networkMode": "awsvpc",
   "requiresCompatibilities": ["FARGATE"],
   "cpu": "512",
@@ -34,8 +34,8 @@
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
-          "awslogs-group": "/ecs/area42-web",
-          "awslogs-region": "REGION",
+          "awslogs-group": "/ecs/area42-full-web",
+          "awslogs-region": "eu-central-1",
           "awslogs-stream-prefix": "ecs"
         }
       },
