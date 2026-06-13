@@ -2,9 +2,9 @@ name: Build and deploy Area42 web and API
 
 on:
   pull_request:
-    branches: [main, develop]
+    branches: [main, develop, codex/AREA42]
   push:
-    branches: [main, develop]
+    branches: [main, develop, codex/AREA42]
   workflow_dispatch:
 
 permissions:
