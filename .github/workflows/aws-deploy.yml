@@ -125,7 +125,7 @@ jobs:
     name: Deploy web service
     if: >-
       github.event_name != 'pull_request' &&
-      github.ref == 'refs/heads/main'
+      github.ref == 'refs/heads/codex/AREA42'
     needs: publish-web
     runs-on: ubuntu-latest
     environment: production
@@ -194,7 +194,7 @@ jobs:
     name: Deploy API service
     if: >-
       github.event_name != 'pull_request' &&
-      github.ref == 'refs/heads/main'
+      github.ref == 'refs/heads/codex/AREA42'
     needs: publish-api
     runs-on: ubuntu-latest
     environment: production
