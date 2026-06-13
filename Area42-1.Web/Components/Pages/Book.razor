@@ -1,0 +1,187 @@
+@page "/boeken"
+@inject BookingStore BookingStore
+
+<PageTitle>Boek je verblijf | Area42</PageTitle>
+
+<section class="page-hero compact-hero">
+    <div class="shell">
+        <span class="eyebrow light">Boeken zonder betalen</span>
+        <h1>Reserveer jouw plek.</h1>
+        <p>Je ontvangt direct een demonstratiebevestiging. Er vindt geen betaling plaats.</p>
+    </div>
+</section>
+
+<section class="section booking-page">
+    <div class="shell booking-layout">
+        @if (CompletedBooking is not null)
+        {
+            <div class="booking-success">
+                <span class="success-mark">✓</span>
+                <span class="eyebrow">Boeking opgeslagen</span>
+                <h2>Je verblijf staat gepland.</h2>
+                <p>
+                    Bedankt, @CompletedBooking.GuestName. De boeking voor
+                    <strong>@CompletedBooking.AccommodationName</strong> is bevestigd.
+                </p>
+                <dl class="confirmation-details">
+                    <div><dt>Referentie</dt><dd>@CompletedBooking.Reference</dd></div>
+                    <div><dt>Periode</dt><dd>@FormatDate(CompletedBooking.CheckIn) - @FormatDate(CompletedBooking.CheckOut)</dd></div>
+                    <div><dt>Totaal</dt><dd>@CompletedBooking.TotalPrice.ToString("C0", DutchCulture)</dd></div>
+                </dl>
+                <p class="demo-note">Dit is een projectboeking. Er is niets in rekening gebracht.</p>
+                <a class="button button-dark" href="/">Terug naar de homepage</a>
+            </div>
+        }
+        else
+        {
+            <div class="booking-form-panel">
+                <span class="eyebrow">Jouw verblijf</span>
+                <h2>Boekingsgegevens</h2>
+
+                @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+                {
+                    <div class="form-message error-message">@ErrorMessage</div>
+                }
+
+                <EditForm Model="Request" OnValidSubmit="SubmitAsync">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary class="validation-summary" />
+
+                    <div class="form-grid">
+                        <div class="form-group full-width">
+                            <label for="accommodation">Verblijf</label>
+                            <InputSelect id="accommodation" @bind-Value="Request.AccommodationId">
+                                <option value="">Kies een verblijf</option>
+                                @foreach (var stay in BookingStore.Accommodations)
+                                {
+                                    <option value="@stay.Id">@stay.Name - @stay.PricePerNight.ToString("C0", DutchCulture) per nacht</option>
+                                }
+                            </InputSelect>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="check-in">Aankomst</label>
+                            <InputDate id="check-in" @bind-Value="Request.CheckIn" min="@Today" />
+                        </div>
+                        <div class="form-group">
+                            <label for="check-out">Vertrek</label>
+                            <InputDate id="check-out" @bind-Value="Request.CheckOut" min="@Today" />
+                        </div>
+
+                        <div class="form-group">
+                            <label for="guests">Aantal gasten</label>
+                            <InputNumber id="guests" @bind-Value="Request.Guests" min="1" max="8" />
+                        </div>
+                        <div class="form-group">
+                            <label for="name">Naam</label>
+                            <input id="name" @bind="Request.GuestName" @bind:event="oninput" autocomplete="name" />
+                        </div>
+
+                        <div class="form-group">
+                            <label for="email">E-mailadres</label>
+                            <input id="email" type="email" @bind="Request.GuestEmail" @bind:event="oninput" autocomplete="email" />
+                        </div>
+                        <div class="form-group">
+                            <label for="phone">Telefoonnummer</label>
+                            <input id="phone" @bind="Request.GuestPhone" @bind:event="oninput" autocomplete="tel" />
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label for="notes">Opmerkingen <span>(optioneel)</span></label>
+                            <textarea id="notes" @bind="Request.Notes" @bind:event="oninput"></textarea>
+                        </div>
+                    </div>
+
+                    <button class="button button-dark submit-booking" type="submit" disabled="@IsSubmitting">
+                        @(IsSubmitting ? "Boeking opslaan..." : "Boeking bevestigen")
+                    </button>
+                </EditForm>
+            </div>
+
+            <aside class="booking-summary">
+                <div class="summary-image @(SelectedAccommodation?.CssClass ?? "cabin-one")"></div>
+                <div class="summary-content">
+                    <span class="eyebrow">Vaste projectprijs</span>
+                    <h3>@(SelectedAccommodation?.Name ?? "Kies een verblijf")</h3>
+                    @if (SelectedAccommodation is not null)
+                    {
+                        <p>@SelectedAccommodation.Description</p>
+                        <div class="price-line">
+                            <span>@Nights nacht(en) × @SelectedAccommodation.PricePerNight.ToString("C0", DutchCulture)</span>
+                            <strong>@EstimatedPrice.ToString("C0", DutchCulture)</strong>
+                        </div>
+                    }
+                    <p class="demo-note">Geen betaalpagina en geen echte transactie. De boeking wordt wel opgeslagen en verschijnt in het adminpanel.</p>
+                </div>
+            </aside>
+        }
+    </div>
+</section>
+
+@code {
+    private static readonly System.Globalization.CultureInfo DutchCulture =
+        System.Globalization.CultureInfo.GetCultureInfo("nl-NL");
+
+    [SupplyParameterFromQuery(Name = "accommodation")]
+    public string? AccommodationQuery { get; set; }
+
+    [SupplyParameterFromQuery(Name = "arrival")]
+    public string? ArrivalQuery { get; set; }
+
+    [SupplyParameterFromQuery(Name = "departure")]
+    public string? DepartureQuery { get; set; }
+
+    [SupplyParameterFromQuery(Name = "guests")]
+    public int? GuestsQuery { get; set; }
+
+    private BookingRequest Request { get; } = new();
+    private Booking? CompletedBooking { get; set; }
+    private string? ErrorMessage { get; set; }
+    private bool IsSubmitting { get; set; }
+    private string Today => DateOnly.FromDateTime(DateTime.Today).ToString("yyyy-MM-dd");
+
+    private Accommodation? SelectedAccommodation =>
+        BookingStore.GetAccommodation(Request.AccommodationId);
+
+    private int Nights =>
+        Request.CheckIn is not null && Request.CheckOut > Request.CheckIn
+            ? Request.CheckOut.Value.DayNumber - Request.CheckIn.Value.DayNumber
+            : 0;
+
+    private decimal EstimatedPrice => Nights * (SelectedAccommodation?.PricePerNight ?? 0);
+
+    protected override void OnParametersSet()
+    {
+        Request.AccommodationId = AccommodationQuery ?? Request.AccommodationId;
+        Request.CheckIn = ParseDate(ArrivalQuery) ?? Request.CheckIn ?? DateOnly.FromDateTime(DateTime.Today.AddDays(7));
+        Request.CheckOut = ParseDate(DepartureQuery) ?? Request.CheckOut ?? DateOnly.FromDateTime(DateTime.Today.AddDays(10));
+        Request.Guests = GuestsQuery ?? Request.Guests;
+    }
+
+    private async Task SubmitAsync()
+    {
+        IsSubmitting = true;
+        ErrorMessage = null;
+        try
+        {
+            var result = await BookingStore.CreateAsync(Request);
+            if (result.Success)
+            {
+                CompletedBooking = result.Booking;
+            }
+            else
+            {
+                ErrorMessage = result.Error;
+            }
+        }
+        finally
+        {
+            IsSubmitting = false;
+        }
+    }
+
+    private static DateOnly? ParseDate(string? value) =>
+        DateOnly.TryParse(value, out var date) ? date : null;
+
+    private static string FormatDate(DateOnly date) => date.ToString("d MMMM yyyy", DutchCulture);
+}

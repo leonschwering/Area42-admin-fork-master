@@ -1,0 +1,68 @@
+@page "/admin/login"
+@model Area42_1.Web.Pages.AdminLoginModel
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin inloggen | Area42</title>
+    <link rel="stylesheet" href="/css/app.css" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+</head>
+<body class="theme-green login-body">
+    <main class="login-page">
+        <section class="login-visual">
+            <a class="brand" href="/" aria-label="Area42 home">
+                <span class="brand-mark">A</span>
+                <span>AREA<strong>42</strong></span>
+            </a>
+            <div>
+                <span class="eyebrow light">Beveiligd beheer</span>
+                <h1>Welkom terug.</h1>
+                <p>Log in om de demonstratieboekingen te bekijken en beheren.</p>
+            </div>
+        </section>
+        <section class="login-panel">
+            <div class="login-card">
+                <span class="eyebrow">Adminomgeving</span>
+                <h2>Inloggen</h2>
+
+                @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+                {
+                    <div class="form-message error-message">@Model.ErrorMessage</div>
+                }
+
+                <form method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" asp-for="ReturnUrl" />
+                    <div class="form-group">
+                        <label asp-for="Email">E-mailadres</label>
+                        <input asp-for="Email" type="email" value="@Model.Email" autocomplete="username" autofocus />
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="Password">Wachtwoord</label>
+                        <input asp-for="Password" type="password" value="@Model.Password" autocomplete="current-password" />
+                    </div>
+                    <button class="button button-dark login-button" type="submit">Inloggen</button>
+                </form>
+
+                <div class="demo-credentials">
+                    <strong>Demo-inlog</strong>
+                    <span>admin1@area42.nl</span>
+                    <span>Admin@123</span>
+                    <form method="post" asp-page-handler="Demo">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" asp-for="ReturnUrl" />
+                        <button class="button demo-login-button" type="submit">Direct inloggen als demo-admin</button>
+                    </form>
+                </div>
+                <a class="back-link" href="/">← Terug naar de website</a>
+            </div>
+        </section>
+    </main>
+</body>
+</html>

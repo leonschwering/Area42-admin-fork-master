@@ -1,16 +1,22 @@
-<Router AppAssembly="typeof(Program).Assembly">
-    <Found Context="routeData">
-        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
-        <FocusOnNavigate RouteData="routeData" Selector="h1" />
-    </Found>
-    <NotFound>
-        <PageTitle>Niet gevonden | Area42</PageTitle>
-        <LayoutView Layout="typeof(Layout.MainLayout)">
-            <div class="shell section" style="text-align: center;">
-                <h1>Pagina niet gevonden</h1>
-                <p style="margin: 1rem 0 2rem;">De pagina die je zoekt bestaat niet.</p>
-                <a href="/" class="button button-primary">Naar de startpagina</a>
-            </div>
-        </LayoutView>
-    </NotFound>
-</Router>
+<CascadingAuthenticationState>
+    <Router AppAssembly="typeof(Program).Assembly">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
+                <NotAuthorized>
+                    <RedirectToAdminLogin />
+                </NotAuthorized>
+            </AuthorizeRouteView>
+            <FocusOnNavigate RouteData="routeData" Selector="h1" />
+        </Found>
+        <NotFound>
+            <PageTitle>Niet gevonden | Area42</PageTitle>
+            <LayoutView Layout="typeof(Layout.MainLayout)">
+                <div class="shell section" style="text-align: center;">
+                    <h1>Pagina niet gevonden</h1>
+                    <p style="margin: 1rem 0 2rem;">De pagina die je zoekt bestaat niet.</p>
+                    <a href="/" class="button button-primary">Naar de startpagina</a>
+                </div>
+            </LayoutView>
+        </NotFound>
+    </Router>
+</CascadingAuthenticationState>

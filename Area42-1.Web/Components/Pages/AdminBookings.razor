@@ -1,0 +1,140 @@
+@page "/admin"
+@attribute [Authorize]
+@inject BookingStore BookingStore
+
+<PageTitle>Boekingen beheren | Area42</PageTitle>
+
+<section class="admin-hero">
+    <div class="shell admin-hero-inner">
+        <div>
+            <span class="eyebrow light">Demonstratiebeheer</span>
+            <h1>Boekingen</h1>
+            <p>Bekijk reserveringen en wijzig hun status. Dit paneel is alleen bedoeld voor dit project.</p>
+        </div>
+        <div class="admin-actions">
+            <a class="button header-button" href="/">Bekijk website</a>
+            <form method="post" action="/admin/logout">
+                <button class="button header-button" type="submit">Uitloggen</button>
+            </form>
+        </div>
+    </div>
+</section>
+
+<section class="admin-page">
+    <div class="shell">
+        @if (Summary is null)
+        {
+            <p>Boekingen laden...</p>
+        }
+        else
+        {
+            <div class="dashboard-grid">
+                <article><span>Totaal</span><strong>@Summary.Total</strong></article>
+                <article><span>Aankomend</span><strong>@Summary.Upcoming</strong></article>
+                <article><span>In afwachting</span><strong>@Summary.Pending</strong></article>
+                <article><span>Demo-omzet</span><strong>@Summary.ConfirmedRevenue.ToString("C0", DutchCulture)</strong></article>
+            </div>
+
+            <div class="admin-toolbar">
+                <div>
+                    <span class="eyebrow">Reserveringen</span>
+                    <h2>Boekingsoverzicht</h2>
+                </div>
+                <label>
+                    Filter
+                    <select @bind="StatusFilter">
+                        <option value="">Alle statussen</option>
+                        @foreach (var status in Enum.GetValues<BookingStatus>())
+                        {
+                            <option value="@status.ToString()">@StatusLabel(status)</option>
+                        }
+                    </select>
+                </label>
+            </div>
+
+            <div class="booking-table-wrap">
+                <table class="booking-table">
+                    <thead>
+                        <tr>
+                            <th>Referentie</th>
+                            <th>Gast</th>
+                            <th>Verblijf</th>
+                            <th>Periode</th>
+                            <th>Bedrag</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var booking in FilteredBookings)
+                        {
+                            <tr>
+                                <td><strong>@booking.Reference</strong><small>@booking.CreatedAtUtc.ToLocalTime().ToString("dd-MM-yyyy HH:mm")</small></td>
+                                <td>@booking.GuestName<small>@booking.GuestEmail</small></td>
+                                <td>@booking.AccommodationName<small>@booking.Guests gasten · @booking.Nights nachten</small></td>
+                                <td>@booking.CheckIn.ToString("dd-MM-yyyy")<small>t/m @booking.CheckOut.ToString("dd-MM-yyyy")</small></td>
+                                <td><strong>@booking.TotalPrice.ToString("C0", DutchCulture)</strong></td>
+                                <td>
+                                    <select class="status-select status-@booking.Status.ToString().ToLowerInvariant()"
+                                            value="@booking.Status"
+                                            @onchange="eventArgs => ChangeStatusAsync(booking, eventArgs)">
+                                        @foreach (var status in Enum.GetValues<BookingStatus>())
+                                        {
+                                            <option value="@status">@StatusLabel(status)</option>
+                                        }
+                                    </select>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (!FilteredBookings.Any())
+            {
+                <div class="empty-state">Geen boekingen gevonden voor dit filter.</div>
+            }
+        }
+    </div>
+</section>
+
+@code {
+    private static readonly System.Globalization.CultureInfo DutchCulture =
+        System.Globalization.CultureInfo.GetCultureInfo("nl-NL");
+
+    private List<Booking> Bookings { get; set; } = [];
+    private DashboardSummary? Summary { get; set; }
+    private string StatusFilter { get; set; } = string.Empty;
+
+    private IEnumerable<Booking> FilteredBookings =>
+        string.IsNullOrWhiteSpace(StatusFilter)
+            ? Bookings
+            : Bookings.Where(item => item.Status.ToString() == StatusFilter);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshAsync();
+    }
+
+    private async Task ChangeStatusAsync(Booking booking, ChangeEventArgs eventArgs)
+    {
+        if (Enum.TryParse<BookingStatus>(eventArgs.Value?.ToString(), out var status))
+        {
+            await BookingStore.SetStatusAsync(booking.Id, status);
+            await RefreshAsync();
+        }
+    }
+
+    private async Task RefreshAsync()
+    {
+        Bookings = (await BookingStore.GetBookingsAsync()).ToList();
+        Summary = await BookingStore.GetSummaryAsync();
+    }
+
+    private static string StatusLabel(BookingStatus status) => status switch
+    {
+        BookingStatus.Pending => "In afwachting",
+        BookingStatus.Confirmed => "Bevestigd",
+        BookingStatus.Cancelled => "Geannuleerd",
+        _ => status.ToString()
+    };
+}
