@@ -260,3 +260,115 @@ jobs:
           aws ecs wait services-stable \
             --cluster "${ECS_CLUSTER}" \
             --services "${SERVICE}"
+  
+  deployment-report:
+    name: Generate deployment report
+    if: >-
+      github.event_name != 'pull_request' &&
+      github.ref == 'refs/heads/codex/AREA42'
+    needs: [deploy-web, deploy-api]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Generate deployment report
+        run: |
+          REPORT=deployment-report.md
+
+          echo "# Area42 Deployment Report" > $REPORT
+          echo "" >> $REPORT
+          echo "## Deployment Information" >> $REPORT
+          echo "- Status: Successful" >> $REPORT
+          echo "- Date (UTC): $(date -u)" >> $REPORT
+          echo "- Cluster: $ECS_CLUSTER" >> $REPORT
+          echo "- Branch: $GITHUB_REF_NAME" >> $REPORT
+          echo "- Commit: $GITHUB_SHA" >> $REPORT
+          echo "" >> $REPORT
+
+          for SERVICE in $WEB_ECS_SERVICE $API_ECS_SERVICE
+          do
+            TASK_ARN=$(aws ecs list-tasks \
+              --cluster "$ECS_CLUSTER" \
+              --service-name "$SERVICE" \
+              --desired-status RUNNING \
+              --query "taskArns[0]" \
+              --output text)
+
+            TASK_STATUS=$(aws ecs describe-tasks \
+              --cluster "$ECS_CLUSTER" \
+              --tasks "$TASK_ARN" \
+              --query "tasks[0].lastStatus" \
+              --output text)
+
+            ENI_ID=$(aws ecs describe-tasks \
+              --cluster "$ECS_CLUSTER" \
+              --tasks "$TASK_ARN" \
+              --query "tasks[0].attachments[0].details[?name=='networkInterfaceId'].value" \
+              --output text)
+
+            PUBLIC_IP=$(aws ec2 describe-network-interfaces \
+              --network-interface-ids "$ENI_ID" \
+              --query "NetworkInterfaces[0].Association.PublicIp" \
+              --output text)
+
+            if [[ "$SERVICE" == "$WEB_ECS_SERVICE" ]]; then
+              NAME="Web Application"
+              URL="http://$PUBLIC_IP"
+            else
+              NAME="API Service"
+              URL="http://$PUBLIC_IP:8080"
+            fi
+
+            HEALTH=$(curl --max-time 10 -o /dev/null -s -w "%{http_code}" "$URL" || echo "FAILED")
+
+            echo "" >> $REPORT
+            echo "## $NAME" >> $REPORT
+            echo "- ECS Service: $SERVICE" >> $REPORT
+            echo "- Task Status: $TASK_STATUS" >> $REPORT
+            echo "- Public IP: $PUBLIC_IP" >> $REPORT
+            echo "- URL: $URL" >> $REPORT
+            echo "- Health Check: $HEALTH" >> $REPORT
+          done
+
+      - name: Send deployment report to Discord
+        run: |
+          WEB_URL=$(grep "URL:" deployment-report.md | sed -n '1p' | cut -d' ' -f3)
+          API_URL=$(grep "URL:" deployment-report.md | sed -n '2p' | cut -d' ' -f3)
+          WEB_HEALTH=$(grep "Health Check:" deployment-report.md | sed -n '1p' | cut -d':' -f2 | xargs)
+          API_HEALTH=$(grep "Health Check:" deployment-report.md | sed -n '2p' | cut -d':' -f2 | xargs)
+
+          curl -H "Content-Type: application/json" \
+            -X POST \
+            -d "{
+              \"embeds\": [{
+                \"title\": \"🚀 Area42 Deployment Report\",
+                \"description\": \"Deployment completed successfully.\",
+                \"color\": 5763719,
+                \"fields\": [
+                  { \"name\": \"🌐 Web Application\", \"value\": \"$WEB_URL\", \"inline\": false },
+                  { \"name\": \"🔌 API Service\", \"value\": \"$API_URL\", \"inline\": false },
+                  { \"name\": \"✅ Web Health\", \"value\": \"$WEB_HEALTH\", \"inline\": true },
+                  { \"name\": \"✅ API Health\", \"value\": \"$API_HEALTH\", \"inline\": true },
+                  { \"name\": \"📦 Cluster\", \"value\": \"$ECS_CLUSTER\", \"inline\": true },
+                  { \"name\": \"🌿 Branch\", \"value\": \"$GITHUB_REF_NAME\", \"inline\": true },
+                  { \"name\": \"🔨 Commit\", \"value\": \"$GITHUB_SHA\", \"inline\": false }
+                ]
+              }]
+            }" \
+            "${{ secrets.DISCORD_WEBHOOK_URL }}"
+
+      - name: Upload deployment report
+        uses: actions/upload-artifact@v4
+        with:
+          name: area42-deployment-report
+          path: deployment-report.md
+
+      - name: Publish deployment report
+        run: |
+          cat deployment-report.md >> $GITHUB_STEP_SUMMARY
