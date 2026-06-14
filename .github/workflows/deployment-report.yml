@@ -5,7 +5,7 @@ on:
 
   workflow_run:
     workflows:
-    - Build and deploy Area42 web and API
+    - Deploy Area42 to AWS
     types:
     - completed
 
