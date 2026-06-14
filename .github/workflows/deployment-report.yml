@@ -8,6 +8,8 @@ on:
       - Build and deploy Area42 web and API
     types:
       - completed
+    branches:
+      - codex/AREA42
 
 jobs:
   deployment-report:
