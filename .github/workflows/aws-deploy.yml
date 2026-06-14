@@ -5,6 +5,8 @@ on:
     branches: [main, develop, codex/AREA42]
   push:
     branches: [main, develop, codex/AREA42]
+    paths-ignore:
+      - '.github/workflows/deployment-report.yml'
   workflow_dispatch:
 
 permissions:
