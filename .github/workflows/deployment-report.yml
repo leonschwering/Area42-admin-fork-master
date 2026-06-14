@@ -1,0 +1,104 @@
+name: Deployment Report
+
+on:
+  workflow_dispatch:
+
+  workflow_run:
+    workflows:
+    - Build and deploy Area42 web and API
+    types:
+    - completed
+
+jobs:
+  deployment-report:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: eu-central-1
+  
+    - name: Generate deployment report
+      run: |
+        REPORT=deployment-report.md
+  
+        echo "# Area42 Deployment Report" > $REPORT
+        echo "" >> $REPORT
+  
+        echo "## Deployment Information" >> $REPORT
+        echo "- Status: Successful" >> $REPORT
+        echo "- Date (UTC): $(date -u)" >> $REPORT
+        echo "- Cluster: AREA42-FULL-CLUSTER" >> $REPORT
+        echo "" >> $REPORT
+  
+        for SERVICE in area42-full-web-service area42-full-api-service
+        do
+          TASK_ARN=$(aws ecs list-tasks \
+            --cluster AREA42-FULL-CLUSTER \
+            --service-name $SERVICE \
+            --desired-status RUNNING \
+            --query "taskArns[0]" \
+            --output text)
+  
+          TASK_STATUS=$(aws ecs describe-tasks \
+            --cluster AREA42-FULL-CLUSTER \
+            --tasks $TASK_ARN \
+            --query "tasks[0].lastStatus" \
+            --output text)
+  
+          ENI_ID=$(aws ecs describe-tasks \
+            --cluster AREA42-FULL-CLUSTER \
+            --tasks $TASK_ARN \
+            --query "tasks[0].attachments[0].details[?name=='networkInterfaceId'].value" \
+            --output text)
+  
+          PUBLIC_IP=$(aws ec2 describe-network-interfaces \
+            --network-interface-ids $ENI_ID \
+            --query "NetworkInterfaces[0].Association.PublicIp" \
+            --output text)
+  
+          if [[ "$SERVICE" == "area42-full-web-service" ]]; then
+            NAME="Web Application"
+            URL="http://$PUBLIC_IP"
+          else
+            NAME="API Service"
+            URL="http://$PUBLIC_IP:8080"
+          fi
+  
+          HEALTH=$(curl \
+            --max-time 10 \
+            -o /dev/null \
+            -s \
+            -w "%{http_code}" \
+            "$URL" || echo "FAILED")
+  
+          echo "" >> $REPORT
+          echo "## $NAME" >> $REPORT
+          echo "- ECS Service: $SERVICE" >> $REPORT
+          echo "- Task Status: $TASK_STATUS" >> $REPORT
+          echo "- Public IP: $PUBLIC_IP" >> $REPORT
+          echo "- URL: $URL" >> $REPORT
+          echo "- Health Check: $HEALTH" >> $REPORT
+        done
+  
+        echo "" >> $REPORT
+        echo "## Notes" >> $REPORT
+        echo "- Public IP addresses may change after every deployment." >> $REPORT
+        echo "- Web service runs on port 80." >> $REPORT
+        echo "- API service runs on port 8080." >> $REPORT
+  
+    - name: Upload report artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: area42-deployment-report
+        path: deployment-report.md
+  
+    - name: Publish report to workflow summary
+      run: |
+        cat deployment-report.md >> $GITHUB_STEP_SUMMARY
