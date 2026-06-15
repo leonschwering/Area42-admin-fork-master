@@ -13,4 +13,8 @@
     <ProjectReference Include="..\Area42-1.Web\Area42-1.Web.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="MessagePack" Version="2.5.301" />
+  </ItemGroup>
+
 </Project>
