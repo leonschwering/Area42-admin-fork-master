@@ -9,6 +9,7 @@ builder.Services.AddServerSideBlazor();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddOutputCache();
 builder.Services.AddSingleton<BookingStore>();
+builder.Services.AddSingleton<AdminTotpService>();
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>

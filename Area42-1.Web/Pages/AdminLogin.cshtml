@@ -29,37 +29,83 @@
         <section class="login-panel">
             <div class="login-card">
                 <span class="eyebrow">Adminomgeving</span>
-                <h2>Inloggen</h2>
+                <h2>@(Model.IsAuthenticatorStep ? "Bevestigen" : "Inloggen")</h2>
 
                 @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
                 {
                     <div class="form-message error-message">@Model.ErrorMessage</div>
                 }
 
-                <form method="post">
-                    @Html.AntiForgeryToken()
-                    <input type="hidden" asp-for="ReturnUrl" />
-                    <div class="form-group">
-                        <label asp-for="Email">E-mailadres</label>
-                        <input asp-for="Email" type="email" value="@Model.Email" autocomplete="username" autofocus />
-                    </div>
-                    <div class="form-group">
-                        <label asp-for="Password">Wachtwoord</label>
-                        <input asp-for="Password" type="password" value="@Model.Password" autocomplete="current-password" />
-                    </div>
-                    <button class="button button-dark login-button" type="submit">Inloggen</button>
-                </form>
+                @if (Model.IsAuthenticatorStep)
+                {
+                    @if (Model.IsSetupStep)
+                    {
+                        <div class="authenticator-setup">
+                            <p><strong>Microsoft Authenticator instellen</strong></p>
+                            <ol>
+                                <li>Open Microsoft Authenticator.</li>
+                                <li>Kies <strong>Account toevoegen</strong> en daarna <strong>Ander account</strong>.</li>
+                                <li>Scan deze QR-code en vul de zescijferige code hieronder in.</li>
+                            </ol>
+                            <img class="authenticator-qr" src="@Model.QrCodeDataUri" alt="QR-code voor Microsoft Authenticator" />
+                            <details>
+                                <summary>Handmatig instellen</summary>
+                                <code class="authenticator-key">@Model.ManualKey</code>
+                            </details>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="authenticator-intro">
+                            Open Microsoft Authenticator en vul de actuele zescijferige code in.
+                        </p>
+                    }
 
-                <div class="demo-credentials">
-                    <strong>Demo-inlog</strong>
-                    <span>admin1@area42.nl</span>
-                    <span>Admin@123</span>
-                    <form method="post" asp-page-handler="Demo">
+                    <form method="post" asp-page-handler="Authenticator">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" asp-for="ChallengeToken" />
+                        <div class="form-group">
+                            <label asp-for="AuthenticatorCode"></label>
+                            <input asp-for="AuthenticatorCode"
+                                   class="authenticator-code"
+                                   inputmode="numeric"
+                                   pattern="[0-9 ]{6,7}"
+                                   maxlength="7"
+                                   autocomplete="one-time-code"
+                                   autofocus />
+                        </div>
+                        <button class="button button-dark login-button" type="submit">
+                            @(Model.IsSetupStep ? "Authenticator activeren" : "Inloggen")
+                        </button>
+                    </form>
+                }
+                else
+                {
+                    <form method="post">
                         @Html.AntiForgeryToken()
                         <input type="hidden" asp-for="ReturnUrl" />
-                        <button class="button demo-login-button" type="submit">Direct inloggen als demo-admin</button>
+                        <div class="form-group">
+                            <label asp-for="Email">E-mailadres</label>
+                            <input asp-for="Email" type="email" value="@Model.Email" autocomplete="username" autofocus />
+                        </div>
+                        <div class="form-group">
+                            <label asp-for="Password">Wachtwoord</label>
+                            <input asp-for="Password" type="password" value="@Model.Password" autocomplete="current-password" />
+                        </div>
+                        <button class="button button-dark login-button" type="submit">Verder</button>
                     </form>
-                </div>
+
+                    <div class="demo-credentials">
+                        <strong>Demo-inlog</strong>
+                        <span>admin1@area42.nl</span>
+                        <span>Admin@123</span>
+                        <form method="post" asp-page-handler="Demo">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" asp-for="ReturnUrl" />
+                            <button class="button demo-login-button" type="submit">Verder als demo-admin</button>
+                        </form>
+                    </div>
+                }
                 <a class="back-link" href="/">← Terug naar de website</a>
             </div>
         </section>

@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
+using Area42_1.Web.Backend;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
@@ -7,7 +8,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace Area42_1.Web.Pages;
 
-public sealed class AdminLoginModel : PageModel
+public sealed class AdminLoginModel(AdminTotpService totpService) : PageModel
 {
     private const string DemoEmail = "admin1@area42.nl";
     private const string DemoPassword = "Admin@123";
@@ -25,7 +26,18 @@ public sealed class AdminLoginModel : PageModel
     [BindProperty(SupportsGet = true)]
     public string ReturnUrl { get; set; } = "/admin";
 
+    [BindProperty]
+    public string ChallengeToken { get; set; } = string.Empty;
+
+    [BindProperty]
+    [Display(Name = "Authenticator-code")]
+    public string AuthenticatorCode { get; set; } = string.Empty;
+
     public string? ErrorMessage { get; set; }
+    public bool IsAuthenticatorStep { get; private set; }
+    public bool IsSetupStep { get; private set; }
+    public string? QrCodeDataUri { get; private set; }
+    public string? ManualKey { get; private set; }
 
     public IActionResult OnGet()
     {
@@ -42,23 +54,80 @@ public sealed class AdminLoginModel : PageModel
     public async Task<IActionResult> OnPostAsync()
     {
         if (!ModelState.IsValid ||
-            !string.Equals(Email.Trim(), DemoEmail, StringComparison.OrdinalIgnoreCase) ||
-            Password.Trim() != DemoPassword)
+            !CredentialsAreValid())
         {
             ErrorMessage = "De combinatie van e-mailadres en wachtwoord is niet juist.";
             return Page();
         }
 
-        return await SignInAdminAsync();
+        return await ShowAuthenticatorStepAsync();
     }
 
-    public Task<IActionResult> OnPostDemoAsync()
+    public async Task<IActionResult> OnPostDemoAsync()
     {
         ModelState.Clear();
-        return SignInAdminAsync();
+        Email = DemoEmail;
+        Password = DemoPassword;
+        return await ShowAuthenticatorStepAsync();
     }
 
-    private async Task<IActionResult> SignInAdminAsync()
+    public async Task<IActionResult> OnPostAuthenticatorAsync()
+    {
+        ModelState.Clear();
+        if (!totpService.TryGetChallenge(ChallengeToken, out var challenge))
+        {
+            ErrorMessage = "De inlogpoging is verlopen. Log opnieuw in.";
+            Email = DemoEmail;
+            Password = DemoPassword;
+            return Page();
+        }
+
+        if (!await totpService.VerifyAsync(AuthenticatorCode))
+        {
+            ErrorMessage = "De Authenticator-code is niet juist of is verlopen.";
+            await PopulateAuthenticatorStepAsync(challenge.SetupRequired);
+            return Page();
+        }
+
+        if (!totpService.TryConsumeChallenge(ChallengeToken, out challenge))
+        {
+            ErrorMessage = "De inlogpoging is verlopen. Log opnieuw in.";
+            return Page();
+        }
+
+        if (challenge.SetupRequired)
+        {
+            await totpService.EnableAsync();
+        }
+
+        return await SignInAdminAsync(challenge.ReturnUrl);
+    }
+
+    private bool CredentialsAreValid() =>
+        string.Equals(Email.Trim(), DemoEmail, StringComparison.OrdinalIgnoreCase) &&
+        Password.Trim() == DemoPassword;
+
+    private async Task<IActionResult> ShowAuthenticatorStepAsync()
+    {
+        var setupRequired = !await totpService.IsEnabledAsync();
+        ChallengeToken = totpService.CreateChallenge(GetSafeReturnUrl(ReturnUrl), setupRequired);
+        await PopulateAuthenticatorStepAsync(setupRequired);
+        return Page();
+    }
+
+    private async Task PopulateAuthenticatorStepAsync(bool setupRequired)
+    {
+        IsAuthenticatorStep = true;
+        IsSetupStep = setupRequired;
+        if (setupRequired)
+        {
+            var setup = await totpService.GetSetupAsync();
+            QrCodeDataUri = setup.QrCodeDataUri;
+            ManualKey = setup.ManualKey;
+        }
+    }
+
+    private async Task<IActionResult> SignInAdminAsync(string returnUrl)
     {
         var claims = new[]
         {
@@ -79,11 +148,13 @@ public sealed class AdminLoginModel : PageModel
                 ExpiresUtc = DateTimeOffset.UtcNow.AddHours(2)
             });
 
-        return LocalRedirect(GetSafeReturnUrl());
+        return LocalRedirect(GetSafeReturnUrl(returnUrl));
     }
 
-    private string GetSafeReturnUrl() =>
-        Url.IsLocalUrl(ReturnUrl) && ReturnUrl.StartsWith("/admin", StringComparison.OrdinalIgnoreCase)
-            ? ReturnUrl
+    private string GetSafeReturnUrl() => GetSafeReturnUrl(ReturnUrl);
+
+    private string GetSafeReturnUrl(string? returnUrl) =>
+        Url.IsLocalUrl(returnUrl) && returnUrl.StartsWith("/admin", StringComparison.OrdinalIgnoreCase)
+            ? returnUrl
             : "/admin";
 }

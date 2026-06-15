@@ -364,3 +364,4 @@ FodyWeavers.xsd
 
 # Local Area42 demonstration booking data
 Area42-1.Web/App_Data/bookings.json
+Area42-1.Web/App_Data/admin-authenticator.json

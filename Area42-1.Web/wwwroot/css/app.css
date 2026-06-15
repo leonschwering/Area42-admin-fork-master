@@ -1141,6 +1141,64 @@ blockquote footer span {
     margin-top: 10px;
 }
 
+.authenticator-intro,
+.authenticator-setup {
+    margin-bottom: 25px;
+    color: var(--muted);
+    font-size: .88rem;
+}
+
+.authenticator-setup p {
+    margin-bottom: 10px;
+    color: var(--forest);
+}
+
+.authenticator-setup ol {
+    margin: 0 0 20px;
+    padding-left: 20px;
+}
+
+.authenticator-setup li {
+    margin-bottom: 7px;
+}
+
+.authenticator-qr {
+    display: block;
+    width: 210px;
+    max-width: 100%;
+    margin: 0 auto 18px;
+    padding: 10px;
+    background: var(--white);
+    box-shadow: 0 8px 25px rgba(var(--theme-deep-rgb), .12);
+}
+
+.authenticator-setup details {
+    padding: 12px 14px;
+    border: 1px solid #d7d0c4;
+    background: #ebe6dc;
+}
+
+.authenticator-setup summary {
+    cursor: pointer;
+    color: var(--forest);
+    font-weight: 700;
+}
+
+.authenticator-key {
+    display: block;
+    margin-top: 10px;
+    overflow-wrap: anywhere;
+    color: var(--ink);
+    font-size: .78rem;
+}
+
+.form-group .authenticator-code {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: .3em;
+    text-align: center;
+}
+
 .demo-credentials {
     display: grid;
     margin-top: 28px;
