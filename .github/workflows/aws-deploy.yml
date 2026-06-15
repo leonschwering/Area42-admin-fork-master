@@ -179,17 +179,21 @@ jobs:
               .registeredBy
             )
             | .containerDefinitions |= map(
-                if .name == $container then
-                  .image = $image
-                  | .secrets = (
-                      (.secrets // [])
-                      | map(select(.name != "ConnectionStrings__DefaultConnection"))
-                      + [{
-                          "name": "ConnectionStrings__DefaultConnection",
-                          "valueFrom": $dbSecret
-                        }]
-                    )
-                else . end
+              if .name == $container then
+                .image = $image
+                | .environment = (
+                    (.environment // [])
+                    | map(select(.name != "ConnectionStrings__DefaultConnection"))
+                  )
+                | .secrets = (
+                    (.secrets // [])
+                    | map(select(.name != "ConnectionStrings__DefaultConnection"))
+                    + [{
+                        "name": "ConnectionStrings__DefaultConnection",
+                        "valueFrom": $dbSecret
+                      }]
+                  )
+              else . end
               )' current-task-definition.json > next-task-definition.json
 
           TASK_DEFINITION_ARN=$(aws ecs register-task-definition \
@@ -266,6 +270,10 @@ jobs:
             | .containerDefinitions |= map(
                 if .name == $container then
                   .image = $image
+                  | .environment = (
+                      (.environment // [])
+                      | map(select(.name != "ConnectionStrings__DefaultConnection"))
+                    )
                   | .secrets = (
                       (.secrets // [])
                       | map(select(.name != "ConnectionStrings__DefaultConnection"))
