@@ -22,6 +22,7 @@ env:
   API_ECR_REPOSITORY: area42-full-api
   WEB_CONTAINER_NAME: area42-web
   API_CONTAINER_NAME: area42-api
+  DB_CONNECTION_SECRET_NAME: Area42_SQL_Secret
 
 jobs:
   verify:
@@ -159,9 +160,15 @@ jobs:
             --task-definition "${CURRENT_TASK_DEFINITION}" \
             --query "taskDefinition" > current-task-definition.json
 
+          DB_CONNECTION_SECRET_ARN=$(aws secretsmanager describe-secret \
+            --secret-id "${DB_CONNECTION_SECRET_NAME}" \
+            --query "ARN" \
+            --output text)
+
           jq \
             --arg image "${IMAGE_URI}" \
             --arg container "${WEB_CONTAINER_NAME}" \
+            --arg dbSecret "${DB_CONNECTION_SECRET_ARN}" \
             'del(
               .taskDefinitionArn,
               .revision,
@@ -172,7 +179,17 @@ jobs:
               .registeredBy
             )
             | .containerDefinitions |= map(
-                if .name == $container then .image = $image else . end
+                if .name == $container then
+                  .image = $image
+                  | .secrets = (
+                      (.secrets // [])
+                      | map(select(.name != "ConnectionStrings__DefaultConnection"))
+                      + [{
+                          "name": "ConnectionStrings__DefaultConnection",
+                          "valueFrom": $dbSecret
+                        }]
+                    )
+                else . end
               )' current-task-definition.json > next-task-definition.json
 
           TASK_DEFINITION_ARN=$(aws ecs register-task-definition \
@@ -228,9 +245,15 @@ jobs:
             --task-definition "${CURRENT_TASK_DEFINITION}" \
             --query "taskDefinition" > current-task-definition.json
 
+          DB_CONNECTION_SECRET_ARN=$(aws secretsmanager describe-secret \
+            --secret-id "${DB_CONNECTION_SECRET_NAME}" \
+            --query "ARN" \
+            --output text)
+
           jq \
             --arg image "${IMAGE_URI}" \
             --arg container "${API_CONTAINER_NAME}" \
+            --arg dbSecret "${DB_CONNECTION_SECRET_ARN}" \
             'del(
               .taskDefinitionArn,
               .revision,
@@ -241,7 +264,17 @@ jobs:
               .registeredBy
             )
             | .containerDefinitions |= map(
-                if .name == $container then .image = $image else . end
+                if .name == $container then
+                  .image = $image
+                  | .secrets = (
+                      (.secrets // [])
+                      | map(select(.name != "ConnectionStrings__DefaultConnection"))
+                      + [{
+                          "name": "ConnectionStrings__DefaultConnection",
+                          "valueFrom": $dbSecret
+                        }]
+                    )
+                else . end
               )' current-task-definition.json > next-task-definition.json
 
           TASK_DEFINITION_ARN=$(aws ecs register-task-definition \

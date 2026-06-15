@@ -4,6 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <UserSecretsId>area42-api-local-secrets</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>

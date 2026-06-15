@@ -28,7 +28,13 @@
         },
         {
           "name": "AREA42_THEME",
-          "value": "blue"
+          "value": "green"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "ConnectionStrings__DefaultConnection",
+          "valueFrom": "arn:aws:secretsmanager:eu-central-1:074693480758:secret:Area42_SQL_Secret"
         }
       ],
       "logConfiguration": {

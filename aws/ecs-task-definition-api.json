@@ -30,7 +30,7 @@
       "secrets": [
         {
           "name": "ConnectionStrings__DefaultConnection",
-          "valueFrom": "arn:aws:secretsmanager:eu-central-1:074693480758:secret:area42/db-connection-string"
+          "valueFrom": "arn:aws:secretsmanager:eu-central-1:074693480758:secret:Area42_SQL_Secret"
         },
         {
           "name": "Jwt__Key",

@@ -1,30 +1,41 @@
-using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 
 namespace Area42_1.Web.Backend;
 
-public sealed class BookingStore
+public sealed class BookingStore(
+    IDbContextFactory<BookingDbContext> contextFactory,
+    ILogger<BookingStore> logger)
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
-    {
-        WriteIndented = true
-    };
-
-    private readonly SemaphoreSlim _gate = new(1, 1);
-    private readonly string _dataFile;
-    private readonly ILogger<BookingStore> _logger;
-    private List<Booking>? _bookings;
-
-    public BookingStore(IWebHostEnvironment environment, ILogger<BookingStore> logger)
-    {
-        _logger = logger;
-        _dataFile = Path.Combine(environment.ContentRootPath, "App_Data", "bookings.json");
-    }
+    private const int PendingStatus = 0;
+    private const int ConfirmedStatus = 1;
+    private const int CancelledStatus = 4;
 
     public IReadOnlyList<Accommodation> Accommodations { get; } =
     [
-        new("bosvilla", "Bosvilla", "Ruime villa aan de bosrand voor het hele gezin.", 4, 2, 129m, "cabin-one"),
-        new("waterlodge", "Waterlodge", "Comfortabele lodge aan het water met extra leefruimte.", 6, 3, 169m, "cabin-two"),
-        new("heidehuisje", "Heidehuisje", "Knus huisje voor twee, midden in het groen.", 2, 1, 99m, "cabin-three")
+        new(
+            "bosvilla",
+            "Bosvilla",
+            "Ruime villa aan de bosrand voor het hele gezin.",
+            4,
+            2,
+            129m,
+            "cabin-one"),
+        new(
+            "waterlodge",
+            "Waterlodge",
+            "Comfortabele lodge aan het water met extra leefruimte.",
+            6,
+            3,
+            169m,
+            "cabin-two"),
+        new(
+            "heidehuisje",
+            "Heidehuisje",
+            "Knus huisje voor twee, midden in het groen.",
+            2,
+            1,
+            99m,
+            "cabin-three")
     ];
 
     public Accommodation? GetAccommodation(string id) =>
@@ -33,11 +44,13 @@ public sealed class BookingStore
 
     public async Task<IReadOnlyList<Booking>> GetBookingsAsync()
     {
-        await EnsureLoadedAsync();
-        return _bookings!
-            .OrderByDescending(booking => booking.CreatedAtUtc)
-            .Select(Clone)
-            .ToList();
+        await using var context = await contextFactory.CreateDbContextAsync();
+        var reservations = await context.Reservations
+            .AsNoTracking()
+            .OrderByDescending(item => item.CreatedAt)
+            .ToListAsync();
+
+        return reservations.Select(ToBooking).ToList();
     }
 
     public async Task<bool> IsAvailableAsync(
@@ -45,16 +58,26 @@ public sealed class BookingStore
         DateOnly checkIn,
         DateOnly checkOut)
     {
-        await EnsureLoadedAsync();
-        return IsAvailable(accommodationId, checkIn, checkOut);
+        if (!TryGetAccommodationGuid(accommodationId, out var accommodationGuid))
+        {
+            return false;
+        }
+
+        await using var context = await contextFactory.CreateDbContextAsync();
+        var start = checkIn.ToDateTime(TimeOnly.MinValue);
+        var end = checkOut.ToDateTime(TimeOnly.MinValue);
+        return !await context.Reservations.AnyAsync(item =>
+            item.AccommodationId == accommodationGuid &&
+            item.Status != CancelledStatus &&
+            item.CheckInDate < end &&
+            item.CheckOutDate > start);
     }
 
     public async Task<BookingResult> CreateAsync(BookingRequest request)
     {
-        await EnsureLoadedAsync();
-
         var accommodation = GetAccommodation(request.AccommodationId);
-        if (accommodation is null)
+        if (accommodation is null ||
+            !TryGetAccommodationGuid(request.AccommodationId, out var accommodationGuid))
         {
             return new(false, null, "Het gekozen verblijf bestaat niet.");
         }
@@ -80,196 +103,154 @@ public sealed class BookingStore
 
         if (request.Guests < 1 || request.Guests > accommodation.MaxGuests)
         {
-            return new(false, null, $"{accommodation.Name} is geschikt voor maximaal {accommodation.MaxGuests} gasten.");
+            return new(
+                false,
+                null,
+                $"{accommodation.Name} is geschikt voor maximaal {accommodation.MaxGuests} gasten.");
         }
 
-        await _gate.WaitAsync();
         try
         {
-            if (!IsAvailable(accommodation.Id, checkIn, checkOut))
+            await using var context = await contextFactory.CreateDbContextAsync();
+            var start = checkIn.ToDateTime(TimeOnly.MinValue);
+            var end = checkOut.ToDateTime(TimeOnly.MinValue);
+            var isOccupied = await context.Reservations.AnyAsync(item =>
+                item.AccommodationId == accommodationGuid &&
+                item.Status != CancelledStatus &&
+                item.CheckInDate < end &&
+                item.CheckOutDate > start);
+
+            if (isOccupied)
             {
                 return new(false, null, "Dit verblijf is niet beschikbaar voor de gekozen periode.");
             }
 
+            var now = DateTime.UtcNow;
             var nights = checkOut.DayNumber - checkIn.DayNumber;
-            var booking = new Booking
+            var reservation = new SqlReservation
             {
                 Id = Guid.NewGuid(),
-                Reference = $"A42-{DateTime.UtcNow:yyMMdd}-{Random.Shared.Next(1000, 9999)}",
-                AccommodationId = accommodation.Id,
-                AccommodationName = accommodation.Name,
-                CheckIn = checkIn,
-                CheckOut = checkOut,
-                Guests = request.Guests,
-                Nights = nights,
+                AccommodationId = accommodationGuid,
+                UserId = Guid.Empty,
+                CheckInDate = start,
+                CheckOutDate = end,
+                NumberOfGuests = request.Guests,
                 TotalPrice = nights * accommodation.PricePerNight,
-                Status = BookingStatus.Confirmed,
+                Status = ConfirmedStatus,
                 GuestName = request.GuestName.Trim(),
                 GuestEmail = request.GuestEmail.Trim(),
                 GuestPhone = request.GuestPhone.Trim(),
-                Notes = request.Notes.Trim(),
-                CreatedAtUtc = DateTime.UtcNow
+                SpecialRequests = request.Notes.Trim(),
+                CreatedAt = now,
+                UpdatedAt = now
             };
 
-            _bookings!.Add(booking);
-            await SaveAsync();
-            return new(true, Clone(booking), null);
+            context.Reservations.Add(reservation);
+            await context.SaveChangesAsync();
+            return new(true, ToBooking(reservation), null);
         }
-        finally
+        catch (Exception exception)
         {
-            _gate.Release();
+            logger.LogError(exception, "The reservation could not be saved to SQL Server.");
+            return new(
+                false,
+                null,
+                "De boeking kon niet worden opgeslagen. Probeer het later opnieuw.");
         }
     }
 
     public async Task<bool> SetStatusAsync(Guid id, BookingStatus status)
     {
-        await EnsureLoadedAsync();
-        await _gate.WaitAsync();
-        try
+        await using var context = await contextFactory.CreateDbContextAsync();
+        var reservation = await context.Reservations.FindAsync(id);
+        if (reservation is null)
         {
-            var booking = _bookings!.FirstOrDefault(item => item.Id == id);
-            if (booking is null)
-            {
-                return false;
-            }
+            return false;
+        }
 
-            booking.Status = status;
-            await SaveAsync();
-            return true;
-        }
-        finally
-        {
-            _gate.Release();
-        }
+        reservation.Status = ToSqlStatus(status);
+        reservation.UpdatedAt = DateTime.UtcNow;
+        await context.SaveChangesAsync();
+        return true;
     }
 
     public async Task<DashboardSummary> GetSummaryAsync()
     {
-        await EnsureLoadedAsync();
-        var today = DateOnly.FromDateTime(DateTime.Today);
+        await using var context = await contextFactory.CreateDbContextAsync();
+        var today = DateTime.Today;
+        var reservations = await context.Reservations.AsNoTracking().ToListAsync();
+
         return new(
-            _bookings!.Count,
-            _bookings.Count(item => item.CheckIn >= today && item.Status != BookingStatus.Cancelled),
-            _bookings.Count(item => item.Status == BookingStatus.Pending),
-            _bookings.Count(item => item.Status == BookingStatus.Cancelled),
-            _bookings
-                .Where(item => item.Status == BookingStatus.Confirmed)
+            reservations.Count,
+            reservations.Count(item =>
+                item.CheckInDate >= today && item.Status != CancelledStatus),
+            reservations.Count(item => item.Status == PendingStatus),
+            reservations.Count(item => item.Status == CancelledStatus),
+            reservations
+                .Where(item => item.Status == ConfirmedStatus)
                 .Sum(item => item.TotalPrice));
     }
 
-    private bool IsAvailable(string accommodationId, DateOnly checkIn, DateOnly checkOut) =>
-        !_bookings!.Any(booking =>
-            booking.AccommodationId == accommodationId &&
-            booking.Status != BookingStatus.Cancelled &&
-            booking.CheckIn < checkOut &&
-            booking.CheckOut > checkIn);
-
-    private async Task EnsureLoadedAsync()
+    private Booking ToBooking(SqlReservation reservation)
     {
-        if (_bookings is not null)
-        {
-            return;
-        }
+        var accommodationId = GetAccommodationId(reservation.AccommodationId);
+        var accommodation = GetAccommodation(accommodationId);
 
-        await _gate.WaitAsync();
-        try
+        return new Booking
         {
-            if (_bookings is not null)
-            {
-                return;
-            }
-
-            Directory.CreateDirectory(Path.GetDirectoryName(_dataFile)!);
-            if (!File.Exists(_dataFile))
-            {
-                _bookings = CreateDemoBookings();
-                await SaveAsync();
-                return;
-            }
-
-            try
-            {
-                var json = await File.ReadAllTextAsync(_dataFile);
-                _bookings = JsonSerializer.Deserialize<List<Booking>>(json, JsonOptions) ?? [];
-            }
-            catch (Exception exception)
-            {
-                _logger.LogWarning(exception, "Booking data could not be read. Starting with demo data.");
-                _bookings = CreateDemoBookings();
-                await SaveAsync();
-            }
-        }
-        finally
-        {
-            _gate.Release();
-        }
+            Id = reservation.Id,
+            Reference = BuildReference(reservation),
+            AccommodationId = accommodationId,
+            AccommodationName = accommodation?.Name ?? "Onbekend verblijf",
+            CheckIn = DateOnly.FromDateTime(reservation.CheckInDate),
+            CheckOut = DateOnly.FromDateTime(reservation.CheckOutDate),
+            Guests = reservation.NumberOfGuests,
+            Nights = (reservation.CheckOutDate.Date - reservation.CheckInDate.Date).Days,
+            TotalPrice = reservation.TotalPrice,
+            Status = FromSqlStatus(reservation.Status),
+            GuestName = reservation.GuestName,
+            GuestEmail = reservation.GuestEmail,
+            GuestPhone = reservation.GuestPhone,
+            Notes = reservation.SpecialRequests,
+            CreatedAtUtc = DateTime.SpecifyKind(reservation.CreatedAt, DateTimeKind.Utc)
+        };
     }
 
-    private async Task SaveAsync()
+    private static string BuildReference(SqlReservation reservation) =>
+        $"A42-{reservation.CreatedAt:yyMMdd}-{reservation.Id.ToString("N")[..4].ToUpperInvariant()}";
+
+    private static int ToSqlStatus(BookingStatus status) => status switch
     {
-        var json = JsonSerializer.Serialize(_bookings, JsonOptions);
-        await File.WriteAllTextAsync(_dataFile, json);
+        BookingStatus.Pending => PendingStatus,
+        BookingStatus.Confirmed => ConfirmedStatus,
+        BookingStatus.Cancelled => CancelledStatus,
+        _ => PendingStatus
+    };
+
+    private static BookingStatus FromSqlStatus(int status) => status switch
+    {
+        ConfirmedStatus => BookingStatus.Confirmed,
+        CancelledStatus => BookingStatus.Cancelled,
+        _ => BookingStatus.Pending
+    };
+
+    private static bool TryGetAccommodationGuid(string id, out Guid guid)
+    {
+        guid = id.ToLowerInvariant() switch
+        {
+            "bosvilla" => Guid.Parse("42000000-0000-0000-0000-000000000001"),
+            "waterlodge" => Guid.Parse("42000000-0000-0000-0000-000000000002"),
+            "heidehuisje" => Guid.Parse("42000000-0000-0000-0000-000000000003"),
+            _ => Guid.Empty
+        };
+        return guid != Guid.Empty;
     }
 
-    private static List<Booking> CreateDemoBookings()
+    private static string GetAccommodationId(Guid id) => id.ToString() switch
     {
-        var today = DateOnly.FromDateTime(DateTime.Today);
-        return
-        [
-            new()
-            {
-                Id = Guid.NewGuid(),
-                Reference = "A42-DEMO-1042",
-                AccommodationId = "bosvilla",
-                AccommodationName = "Bosvilla",
-                CheckIn = today.AddDays(12),
-                CheckOut = today.AddDays(16),
-                Guests = 4,
-                Nights = 4,
-                TotalPrice = 516m,
-                Status = BookingStatus.Confirmed,
-                GuestName = "Familie De Jong",
-                GuestEmail = "demo@area42.nl",
-                GuestPhone = "06 12 34 56 78",
-                Notes = "Graag een kinderstoel klaarzetten.",
-                CreatedAtUtc = DateTime.UtcNow.AddDays(-2)
-            },
-            new()
-            {
-                Id = Guid.NewGuid(),
-                Reference = "A42-DEMO-2042",
-                AccommodationId = "heidehuisje",
-                AccommodationName = "Heidehuisje",
-                CheckIn = today.AddDays(28),
-                CheckOut = today.AddDays(31),
-                Guests = 2,
-                Nights = 3,
-                TotalPrice = 297m,
-                Status = BookingStatus.Pending,
-                GuestName = "Sanne Bakker",
-                GuestEmail = "sanne@example.nl",
-                GuestPhone = "06 87 65 43 21",
-                CreatedAtUtc = DateTime.UtcNow.AddHours(-5)
-            }
-        ];
-    }
-
-    private static Booking Clone(Booking source) => new()
-    {
-        Id = source.Id,
-        Reference = source.Reference,
-        AccommodationId = source.AccommodationId,
-        AccommodationName = source.AccommodationName,
-        CheckIn = source.CheckIn,
-        CheckOut = source.CheckOut,
-        Guests = source.Guests,
-        Nights = source.Nights,
-        TotalPrice = source.TotalPrice,
-        Status = source.Status,
-        GuestName = source.GuestName,
-        GuestEmail = source.GuestEmail,
-        GuestPhone = source.GuestPhone,
-        Notes = source.Notes,
-        CreatedAtUtc = source.CreatedAtUtc
+        "42000000-0000-0000-0000-000000000001" => "bosvilla",
+        "42000000-0000-0000-0000-000000000002" => "waterlodge",
+        "42000000-0000-0000-0000-000000000003" => "heidehuisje",
+        _ => string.Empty
     };
 }

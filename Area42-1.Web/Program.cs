@@ -1,6 +1,7 @@
 using Area42_1.Web.Components;
 using Area42_1.Web.Backend;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,7 +9,12 @@ builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddOutputCache();
-builder.Services.AddSingleton<BookingStore>();
+var bookingConnectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException(
+        "ConnectionStrings:DefaultConnection is required for SQL booking storage.");
+builder.Services.AddPooledDbContextFactory<BookingDbContext>(options =>
+    options.UseSqlServer(bookingConnectionString));
+builder.Services.AddScoped<BookingStore>();
 builder.Services.AddSingleton<AdminTotpService>();
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
