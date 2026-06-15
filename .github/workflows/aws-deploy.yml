@@ -322,7 +322,7 @@ jobs:
               URL="http://$PUBLIC_IP"
             else
               NAME="API Service"
-              URL="http://$PUBLIC_IP"
+              URL="http://$PUBLIC_IP:8080"
             fi
 
             HEALTH=$(curl --max-time 10 -o /dev/null -s -w "%{http_code}" "$URL" || echo "FAILED")
