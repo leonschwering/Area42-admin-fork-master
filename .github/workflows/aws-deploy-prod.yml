@@ -13,7 +13,7 @@ env:
   WEB_ECS_SERVICE: area42-web-PROD
   API_ECS_SERVICE: area42-api-PROD
   WEB_TASK_FAMILY: area42-web-task
-  API_TASK_FAMILY: area42-api-task-v3
+  API_TASK_FAMILY: area42-api-task-v2
   WEB_ECR_REPOSITORY: area42-web
   API_ECR_REPOSITORY: area42-api
   WEB_CONTAINER_NAME: area42-web
