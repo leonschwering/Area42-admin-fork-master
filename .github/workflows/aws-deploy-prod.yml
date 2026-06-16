@@ -1,0 +1,409 @@
+name: Build and deploy Area42 web and API
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  AWS_REGION: eu-central-1
+  DOTNET_VERSION: 10.0.x
+  ECS_CLUSTER: area42-cluster
+  WEB_ECS_SERVICE: area42-web-PROD
+  API_ECS_SERVICE: area42-api-PROD
+  WEB_TASK_FAMILY: area42-web-task
+  API_TASK_FAMILY: area42-api-task
+  WEB_ECR_REPOSITORY: area42-web
+  API_ECR_REPOSITORY: area42-api
+  WEB_CONTAINER_NAME: area42-web
+  API_CONTAINER_NAME: area42-api
+  DB_CONNECTION_SECRET_NAME: Area42_SQL_Secret
+
+jobs:
+  verify:
+    name: Verify web and API
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore solution
+        run: dotnet restore Area42-1.slnx
+
+      - name: Build solution
+        run: dotnet build Area42-1.slnx --configuration Release --no-restore
+
+      - name: Build web container
+        run: docker build --file Dockerfile.Web --tag area42-web:${{ github.sha }} .
+
+      - name: Build API container
+        run: docker build --file Dockerfile.ApiService --tag area42-api:${{ github.sha }} .
+
+  publish-web:
+    name: Publish web image
+    if: github.event_name != 'pull_request'
+    needs: verify
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.image.outputs.uri }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push web image
+        id: image
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          IMAGE_URI="${REGISTRY}/${WEB_ECR_REPOSITORY}:${IMAGE_TAG}"
+          docker build --file Dockerfile.Web --tag "${IMAGE_URI}" .
+          docker push "${IMAGE_URI}"
+          docker tag "${IMAGE_URI}" "${REGISTRY}/${WEB_ECR_REPOSITORY}:latest"
+          docker push "${REGISTRY}/${WEB_ECR_REPOSITORY}:latest"
+          echo "uri=${IMAGE_URI}" >> "${GITHUB_OUTPUT}"
+
+  publish-api:
+    name: Publish API image
+    if: github.event_name != 'pull_request'
+    needs: verify
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.image.outputs.uri }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push API image
+        id: image
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          IMAGE_URI="${REGISTRY}/${API_ECR_REPOSITORY}:${IMAGE_TAG}"
+          docker build --file Dockerfile.ApiService --tag "${IMAGE_URI}" .
+          docker push "${IMAGE_URI}"
+          docker tag "${IMAGE_URI}" "${REGISTRY}/${API_ECR_REPOSITORY}:latest"
+          docker push "${REGISTRY}/${API_ECR_REPOSITORY}:latest"
+          echo "uri=${IMAGE_URI}" >> "${GITHUB_OUTPUT}"
+
+  deploy-web:
+    name: Deploy web service
+    if: >-
+      github.event_name != 'pull_request'
+    needs: publish-web
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy web image
+        env:
+          SERVICE: ${{ env.WEB_ECS_SERVICE }}
+          EXPECTED_TASK_FAMILY: ${{ env.WEB_TASK_FAMILY }}
+          IMAGE_URI: ${{ needs.publish-web.outputs.image }}
+        run: |
+          CURRENT_TASK_DEFINITION=$(aws ecs describe-services \
+            --cluster "${ECS_CLUSTER}" \
+            --services "${SERVICE}" \
+            --query "services[0].taskDefinition" \
+            --output text)
+
+          if [[ "${CURRENT_TASK_DEFINITION}" != *"task-definition/${EXPECTED_TASK_FAMILY}:"* ]]; then
+            echo "Service ${SERVICE} does not use task family ${EXPECTED_TASK_FAMILY}."
+            exit 1
+          fi
+
+          aws ecs describe-task-definition \
+            --task-definition "${CURRENT_TASK_DEFINITION}" \
+            --query "taskDefinition" > current-task-definition.json
+
+          DB_CONNECTION_SECRET_ARN=$(aws secretsmanager describe-secret \
+            --secret-id "${DB_CONNECTION_SECRET_NAME}" \
+            --query "ARN" \
+            --output text)
+
+          jq \
+            --arg image "${IMAGE_URI}" \
+            --arg container "${WEB_CONTAINER_NAME}" \
+            --arg dbSecret "${DB_CONNECTION_SECRET_ARN}" \
+            'del(
+              .taskDefinitionArn,
+              .revision,
+              .status,
+              .requiresAttributes,
+              .compatibilities,
+              .registeredAt,
+              .registeredBy
+            )
+            | .containerDefinitions |= map(
+              if .name == $container then
+                .image = $image
+                | .environment = (
+                    (.environment // [])
+                    | map(select(.name != "ConnectionStrings__DefaultConnection"))
+                  )
+                | .secrets = (
+                    (.secrets // [])
+                    | map(select(.name != "ConnectionStrings__DefaultConnection"))
+                    + [{
+                        "name": "ConnectionStrings__DefaultConnection",
+                        "valueFrom": $dbSecret
+                      }]
+                  )
+              else . end
+              )' current-task-definition.json > next-task-definition.json
+
+          TASK_DEFINITION_ARN=$(aws ecs register-task-definition \
+            --cli-input-json file://next-task-definition.json \
+            --query "taskDefinition.taskDefinitionArn" \
+            --output text)
+
+          aws ecs update-service \
+            --cluster "${ECS_CLUSTER}" \
+            --service "${SERVICE}" \
+            --task-definition "${TASK_DEFINITION_ARN}" \
+            --force-new-deployment
+
+          aws ecs wait services-stable \
+            --cluster "${ECS_CLUSTER}" \
+            --services "${SERVICE}"
+
+  deploy-api:
+    name: Deploy API service
+    if: >-
+      github.event_name != 'pull_request'
+    needs: publish-api
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy API image
+        env:
+          SERVICE: ${{ env.API_ECS_SERVICE }}
+          EXPECTED_TASK_FAMILY: ${{ env.API_TASK_FAMILY }}
+          IMAGE_URI: ${{ needs.publish-api.outputs.image }}
+        run: |
+          CURRENT_TASK_DEFINITION=$(aws ecs describe-services \
+            --cluster "${ECS_CLUSTER}" \
+            --services "${SERVICE}" \
+            --query "services[0].taskDefinition" \
+            --output text)
+
+          if [[ "${CURRENT_TASK_DEFINITION}" != *"task-definition/${EXPECTED_TASK_FAMILY}:"* ]]; then
+            echo "Service ${SERVICE} does not use task family ${EXPECTED_TASK_FAMILY}."
+            exit 1
+          fi
+
+          aws ecs describe-task-definition \
+            --task-definition "${CURRENT_TASK_DEFINITION}" \
+            --query "taskDefinition" > current-task-definition.json
+
+          DB_CONNECTION_SECRET_ARN=$(aws secretsmanager describe-secret \
+            --secret-id "${DB_CONNECTION_SECRET_NAME}" \
+            --query "ARN" \
+            --output text)
+
+          jq \
+            --arg image "${IMAGE_URI}" \
+            --arg container "${API_CONTAINER_NAME}" \
+            --arg dbSecret "${DB_CONNECTION_SECRET_ARN}" \
+            'del(
+              .taskDefinitionArn,
+              .revision,
+              .status,
+              .requiresAttributes,
+              .compatibilities,
+              .registeredAt,
+              .registeredBy
+            )
+            | .containerDefinitions |= map(
+                if .name == $container then
+                  .image = $image
+                  | .environment = (
+                      (.environment // [])
+                      | map(select(.name != "ConnectionStrings__DefaultConnection"))
+                    )
+                  | .secrets = (
+                      (.secrets // [])
+                      | map(select(.name != "ConnectionStrings__DefaultConnection"))
+                      + [{
+                          "name": "ConnectionStrings__DefaultConnection",
+                          "valueFrom": $dbSecret
+                        }]
+                    )
+                else . end
+              )' current-task-definition.json > next-task-definition.json
+
+          TASK_DEFINITION_ARN=$(aws ecs register-task-definition \
+            --cli-input-json file://next-task-definition.json \
+            --query "taskDefinition.taskDefinitionArn" \
+            --output text)
+
+          aws ecs update-service \
+            --cluster "${ECS_CLUSTER}" \
+            --service "${SERVICE}" \
+            --task-definition "${TASK_DEFINITION_ARN}" \
+            --force-new-deployment
+
+          aws ecs wait services-stable \
+            --cluster "${ECS_CLUSTER}" \
+            --services "${SERVICE}"
+  
+  deployment-report:
+    name: Generate deployment report
+    if: >-
+      github.event_name != 'pull_request'
+    needs: [deploy-web, deploy-api]
+    runs-on: ubuntu-latest
+    env:
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Generate deployment report
+        run: |
+          REPORT=deployment-report.md
+
+          echo "# Area42 Deployment Report" > $REPORT
+          echo "" >> $REPORT
+          echo "## Deployment Information" >> $REPORT
+          echo "- Status: Successful" >> $REPORT
+          echo "- Date (UTC): $(date -u)" >> $REPORT
+          echo "- Cluster: $ECS_CLUSTER" >> $REPORT
+          echo "- Branch: $GITHUB_REF_NAME" >> $REPORT
+          echo "- Commit: $GITHUB_SHA" >> $REPORT
+          echo "" >> $REPORT
+
+          for SERVICE in $WEB_ECS_SERVICE $API_ECS_SERVICE
+          do
+            TASK_ARN=$(aws ecs list-tasks \
+              --cluster "$ECS_CLUSTER" \
+              --service-name "$SERVICE" \
+              --desired-status RUNNING \
+              --query "taskArns[0]" \
+              --output text)
+
+            TASK_STATUS=$(aws ecs describe-tasks \
+              --cluster "$ECS_CLUSTER" \
+              --tasks "$TASK_ARN" \
+              --query "tasks[0].lastStatus" \
+              --output text)
+
+            ENI_ID=$(aws ecs describe-tasks \
+              --cluster "$ECS_CLUSTER" \
+              --tasks "$TASK_ARN" \
+              --query "tasks[0].attachments[0].details[?name=='networkInterfaceId'].value" \
+              --output text)
+
+            PUBLIC_IP=$(aws ec2 describe-network-interfaces \
+              --network-interface-ids "$ENI_ID" \
+              --query "NetworkInterfaces[0].Association.PublicIp" \
+              --output text)
+
+            if [[ "$SERVICE" == "$WEB_ECS_SERVICE" ]]; then
+              NAME="Web Application"
+              URL="http://$PUBLIC_IP"
+            else
+              NAME="API Service"
+              URL="http://$PUBLIC_IP:8080"
+            fi
+
+            HEALTH=$(curl --max-time 10 -o /dev/null -s -w "%{http_code}" "$URL" || echo "FAILED")
+
+            echo "" >> $REPORT
+            echo "## $NAME" >> $REPORT
+            echo "- ECS Service: $SERVICE" >> $REPORT
+            echo "- Task Status: $TASK_STATUS" >> $REPORT
+            echo "- Public IP: $PUBLIC_IP" >> $REPORT
+            echo "- URL: $URL" >> $REPORT
+            echo "- Health Check: $HEALTH" >> $REPORT
+          done
+
+      - name: Send deployment report to Discord
+        if: env.DISCORD_WEBHOOK_URL != ''
+        run: |
+          WEB_URL=$(grep "URL:" deployment-report.md | sed -n '1p' | cut -d' ' -f3)
+          API_URL=$(grep "URL:" deployment-report.md | sed -n '2p' | cut -d' ' -f3)
+          WEB_HEALTH=$(grep "Health Check:" deployment-report.md | sed -n '1p' | cut -d':' -f2 | xargs)
+          API_HEALTH=$(grep "Health Check:" deployment-report.md | sed -n '2p' | cut -d':' -f2 | xargs)
+
+          curl -H "Content-Type: application/json" \
+            -X POST \
+            -d "{
+              \"embeds\": [{
+                \"title\": \"🚀 Area42 Deployment Report\",
+                \"description\": \"Deployment completed successfully.\",
+                \"color\": 5763719,
+                \"fields\": [
+                  { \"name\": \"🌐 Web Application\", \"value\": \"$WEB_URL\", \"inline\": false },
+                  { \"name\": \"🔌 API Service\", \"value\": \"$API_URL\", \"inline\": false },
+                  { \"name\": \"✅ Web Health\", \"value\": \"$WEB_HEALTH\", \"inline\": true },
+                  { \"name\": \"✅ API Health\", \"value\": \"$API_HEALTH\", \"inline\": true },
+                  { \"name\": \"📦 Cluster\", \"value\": \"$ECS_CLUSTER\", \"inline\": true },
+                  { \"name\": \"🌿 Branch\", \"value\": \"$GITHUB_REF_NAME\", \"inline\": true },
+                  { \"name\": \"🔨 Commit\", \"value\": \"$GITHUB_SHA\", \"inline\": false }
+                ]
+              }]
+            }" \
+            "${DISCORD_WEBHOOK_URL}"
+
+      - name: Upload deployment report
+        uses: actions/upload-artifact@v4
+        with:
+          name: area42-deployment-report
+          path: deployment-report.md
+
+      - name: Publish deployment report
+        run: |
+          cat deployment-report.md >> $GITHUB_STEP_SUMMARY
