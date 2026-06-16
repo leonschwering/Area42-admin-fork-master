@@ -18,7 +18,7 @@ env:
   API_ECR_REPOSITORY: area42-api
   WEB_CONTAINER_NAME: area42-web
   API_CONTAINER_NAME: area42-api
-  DB_CONNECTION_SECRET_NAME: Area42_SQL_Secret
+  DB_CONNECTION_SECRET_NAME: Area42-Secret-PROD
 
 jobs:
   verify:
