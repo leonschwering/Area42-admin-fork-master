@@ -13,12 +13,12 @@ env:
   WEB_ECS_SERVICE: area42-web-PROD
   API_ECS_SERVICE: area42-api-PROD
   WEB_TASK_FAMILY: area42-web-task
-  API_TASK_FAMILY: area42-api-task
+  API_TASK_FAMILY: area42-api-task-v3
   WEB_ECR_REPOSITORY: area42-web
   API_ECR_REPOSITORY: area42-api
   WEB_CONTAINER_NAME: area42-web
   API_CONTAINER_NAME: area42-api
-  DB_CONNECTION_SECRET_NAME: Area42_SQL_Secret
+  DB_CONNECTION_SECRET_NAME: Area42-Secret-PROD
 
 jobs:
   verify:
