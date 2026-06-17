@@ -7,6 +7,10 @@ permissions:
   contents: read
 
 env:
+  USE_ALB: "true"
+  ALB_DNS_NAME: "Area42-ALB-299839661.eu-central-1.elb.amazonaws.com"
+  WEB_HEALTH_PATH: "/"
+  API_HEALTH_PATH: "/api/"
   AWS_REGION: eu-central-1
   DOTNET_VERSION: 10.0.x
   ECS_CLUSTER: area42-cluster
@@ -317,12 +321,14 @@ jobs:
 
           echo "# Area42 Deployment Report" > $REPORT
           echo "" >> $REPORT
+
           echo "## Deployment Information" >> $REPORT
           echo "- Status: Successful" >> $REPORT
           echo "- Date (UTC): $(date -u)" >> $REPORT
           echo "- Cluster: $ECS_CLUSTER" >> $REPORT
           echo "- Branch: $GITHUB_REF_NAME" >> $REPORT
           echo "- Commit: $GITHUB_SHA" >> $REPORT
+          echo "- Uses ALB: $USE_ALB" >> $REPORT
           echo "" >> $REPORT
 
           for SERVICE in $WEB_ECS_SERVICE $API_ECS_SERVICE
@@ -334,41 +340,79 @@ jobs:
               --query "taskArns[0]" \
               --output text)
 
-            TASK_STATUS=$(aws ecs describe-tasks \
-              --cluster "$ECS_CLUSTER" \
-              --tasks "$TASK_ARN" \
-              --query "tasks[0].lastStatus" \
-              --output text)
+            if [[ "$TASK_ARN" == "None" || "$TASK_ARN" == "" ]]; then
+              TASK_STATUS="NO_RUNNING_TASK"
+              PUBLIC_IP="N/A"
+              PRIVATE_IP="N/A"
+            else
+              TASK_STATUS=$(aws ecs describe-tasks \
+                --cluster "$ECS_CLUSTER" \
+                --tasks "$TASK_ARN" \
+                --query "tasks[0].lastStatus" \
+                --output text)
 
-            ENI_ID=$(aws ecs describe-tasks \
-              --cluster "$ECS_CLUSTER" \
-              --tasks "$TASK_ARN" \
-              --query "tasks[0].attachments[0].details[?name=='networkInterfaceId'].value" \
-              --output text)
+              ENI_ID=$(aws ecs describe-tasks \
+                --cluster "$ECS_CLUSTER" \
+                --tasks "$TASK_ARN" \
+                --query "tasks[0].attachments[0].details[?name=='networkInterfaceId'].value" \
+                --output text)
 
-            PUBLIC_IP=$(aws ec2 describe-network-interfaces \
-              --network-interface-ids "$ENI_ID" \
-              --query "NetworkInterfaces[0].Association.PublicIp" \
-              --output text)
+              PUBLIC_IP=$(aws ec2 describe-network-interfaces \
+                --network-interface-ids "$ENI_ID" \
+                --query "NetworkInterfaces[0].Association.PublicIp" \
+                --output text)
+
+              PRIVATE_IP=$(aws ec2 describe-network-interfaces \
+                --network-interface-ids "$ENI_ID" \
+                --query "NetworkInterfaces[0].PrivateIpAddress" \
+                --output text)
+
+              if [[ "$PUBLIC_IP" == "None" || "$PUBLIC_IP" == "" ]]; then
+                PUBLIC_IP="N/A"
+              fi
+            fi
 
             if [[ "$SERVICE" == "$WEB_ECS_SERVICE" ]]; then
               NAME="Web Application"
-              URL="http://$PUBLIC_IP"
+
+              if [[ "$USE_ALB" == "true" ]]; then
+                URL="http://$ALB_DNS_NAME$WEB_HEALTH_PATH"
+              else
+                URL="http://$PUBLIC_IP"
+              fi
             else
               NAME="API Service"
-              URL="http://$PUBLIC_IP:8080"
+
+              if [[ "$USE_ALB" == "true" ]]; then
+                URL="http://$ALB_DNS_NAME$API_HEALTH_PATH"
+              else
+                URL="http://$PUBLIC_IP:8080"
+              fi
             fi
 
-            HEALTH=$(curl --max-time 10 -o /dev/null -s -w "%{http_code}" "$URL" || echo "FAILED")
+            HEALTH=$(curl \
+              --max-time 10 \
+              -o /dev/null \
+              -s \
+              -w "%{http_code}" \
+              "$URL" || echo "FAILED")
 
             echo "" >> $REPORT
             echo "## $NAME" >> $REPORT
             echo "- ECS Service: $SERVICE" >> $REPORT
             echo "- Task Status: $TASK_STATUS" >> $REPORT
             echo "- Public IP: $PUBLIC_IP" >> $REPORT
+            echo "- Private IP: $PRIVATE_IP" >> $REPORT
             echo "- URL: $URL" >> $REPORT
             echo "- Health Check: $HEALTH" >> $REPORT
           done
+
+          echo "" >> $REPORT
+          echo "## Notes" >> $REPORT
+          echo "- Web service runs on port 80." >> $REPORT
+          echo "- API service runs on port 8080." >> $REPORT
+          echo "- When USE_ALB=true, health checks use the ALB DNS name." >> $REPORT
+          echo "- When USE_ALB=false, health checks use ECS task public IPs." >> $REPORT
 
       - name: Send deployment report to Discord
         if: env.DISCORD_WEBHOOK_URL != ''
