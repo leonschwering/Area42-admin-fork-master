@@ -10,15 +10,15 @@ env:
   AWS_REGION: eu-central-1
   DOTNET_VERSION: 10.0.x
   ECS_CLUSTER: area42-cluster
-  WEB_ECS_SERVICE: area42-web-PROD
-  API_ECS_SERVICE: area42-api-PROD
-  WEB_TASK_FAMILY: area42-web-task
-  API_TASK_FAMILY: area42-api-task
-  WEB_ECR_REPOSITORY: area42-web
-  API_ECR_REPOSITORY: area42-api
-  WEB_CONTAINER_NAME: area42-web
-  API_CONTAINER_NAME: area42-api
-  DB_CONNECTION_SECRET_NAME: Area42-Secret-PROD
+  WEB_ECS_SERVICE: area42-prod-web
+  API_ECS_SERVICE: area42-prod-api
+  WEB_TASK_FAMILY: area42-prod-web-task
+  API_TASK_FAMILY: area42-prod-api-task
+  WEB_ECR_REPOSITORY: area42-prod-web
+  API_ECR_REPOSITORY: area42-prod-api
+  WEB_CONTAINER_NAME: area42-prod-web
+  API_CONTAINER_NAME: area42-prod-api
+  DB_CONNECTION_SECRET_NAME: Area42_PROD_Secret
 
 jobs:
   verify:
